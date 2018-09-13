@@ -71,25 +71,25 @@ import tempfile
 
 from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
-from draost2caom2 import DraoSTName, APPLICATION, COLLECTION
+from blank2caom2 import APPLICATION, COLLECTION
 
 
 meta_visitors = []
 data_visitors = []
 
 
-def draost_run():
-    ec.run_by_file(DraoSTName, APPLICATION, COLLECTION, meta_visitors,
+def blank_run():
+    ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, meta_visitors,
                    data_visitors)
 
 
-def draost_run_proxy():
+def blank_run_proxy():
     proxy = '/usr/src/app/cadcproxy.pem'
-    ec.run_by_file(DraoSTName, APPLICATION, COLLECTION, proxy, meta_visitors,
-                   data_visitors)
+    ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, proxy, 
+	meta_visitors, data_visitors)
 
 
-def draost_run_single():
+def blank_run_single():
     import sys
     config = mc.Config()
     config.get_executors()
@@ -102,9 +102,9 @@ def draost_run_single():
         config.proxy = sys.argv[2]
     config.stream = 'raw'
     if config.features.use_file_names:
-        storage_name = DraoSTName(file_name=sys.argv[1])
+        storage_name = ec.StorageName(file_name=sys.argv[1])
     else:
-        obs_id = DraoSTName.remove_extensions(sys.argv[1])
+        obs_id = ec.StorageName.remove_extensions(sys.argv[1])
         storage_name = DraoSTName(obs_id=obs_id)
     result = ec.run_single(config, storage_name, APPLICATION, meta_visitors,
                            data_visitors)
