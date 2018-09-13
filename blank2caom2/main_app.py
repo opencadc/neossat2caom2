@@ -79,7 +79,7 @@ from caom2pipe import manage_composable as mc
 from caom2pipe import execute_composable as ec
 
 
-__all__ = ['main_app', 'update', 'DraoSTName', 'COLLECTION', 'APPLICATION']
+__all__ = ['main_app', 'update', 'BlankName', 'COLLECTION', 'APPLICATION']
 
 
 APPLICATION = 'blank2caom2'
@@ -97,7 +97,7 @@ class BlankName(ec.StorageName):
     def __init__(self, obs_id=None, fname_on_disk=None, file_name=None):
         self.fname_in_ad = file_name
         super(BlankName, self).__init__(
-            obs_id, COLLECTION, BlankName.DRAOST_NAME_PATTERN, fname_on_disk)
+            obs_id, COLLECTION, BlankName.BLANK_NAME_PATTERN, fname_on_disk)
 
     def is_valid(self):
         return True
