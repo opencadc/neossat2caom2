@@ -162,10 +162,10 @@ def _build_blueprints(uri):
 def _get_uri(args):
     result = None
     if args.observation:
-        result = DraoSTName(args.observation[1]).get_file_uri()
+        result = BlankName(obs_id=args.observation[1]).file_uri
     elif args.local:
-        obs_id = DraoSTName.remove_extensions(os.path.basename(args.local[0]))
-        result = DraoSTName(obs_id).get_file_uri()
+        obs_id = BlankName.remove_extensions(os.path.basename(args.local[0]))
+        result = BlankName(obs_id=obs_id).file_uri
     elif args.lineage:
         result = args.lineage[0].split('/', 1)[1]
     else:
