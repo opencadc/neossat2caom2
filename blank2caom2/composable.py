@@ -79,7 +79,7 @@ data_visitors = []
 
 
 def blank_run():
-    ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, meta_visitors,
+    ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, None, meta_visitors,
                    data_visitors)
 
 
