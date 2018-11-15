@@ -67,6 +67,7 @@
 # ***********************************************************************
 #
 
+import sys
 import tempfile
 
 from caom2pipe import execute_composable as ec
@@ -78,19 +79,23 @@ meta_visitors = []
 data_visitors = []
 
 
-def blank_run():
+def run():
     ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, None, meta_visitors,
                    data_visitors)
 
 
-def blank_run_proxy():
+def run_proxy():
     proxy = '/usr/src/app/cadcproxy.pem'
     ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, proxy, 
 	meta_visitors, data_visitors)
 
 
-def blank_run_single():
-    import sys
+def run_single():
+    """
+    Run the processing for a single entry.
+    :return 0 if successful, -1 if there's any sort of failure. Return status
+        is used by airflow for task instance management and reporting.
+    """
     config = mc.Config()
     config.get_executors()
     config.resource_id = 'ivo://cadc.nrc.ca/sc2repo'
