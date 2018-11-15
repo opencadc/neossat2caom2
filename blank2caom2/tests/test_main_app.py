@@ -80,7 +80,7 @@ from mock import patch
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TESTDATA_DIR = os.path.join(THIS_DIR, 'data')
-PLUGIN = os.path.join(os.path.dirname(THIS_DIR), '{}.py'.format(APPLICATION))
+PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
 
 
 # def pytest_generate_tests(metafunc):
