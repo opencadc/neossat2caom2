@@ -135,13 +135,6 @@ def update(observation, **kwargs):
     return True
 
 
-def _update_typed_set(typed_set, new_set):
-    # remove the previous values
-    while len(typed_set) > 0:
-        typed_set.pop()
-    typed_set.update(new_set)
-
-
 def _build_blueprints(uri):
     """This application relies on the caom2utils fits2caom2 ObsBlueprint
     definition for mapping FITS file values to CAOM model element
