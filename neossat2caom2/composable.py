@@ -67,116 +67,60 @@
 # ***********************************************************************
 #
 
-import importlib
 import logging
-import os
 import sys
 import traceback
 
-from caom2 import Observation
-from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
-from caom2pipe import manage_composable as mc
 from caom2pipe import execute_composable as ec
+from caom2pipe import manage_composable as mc
+from neossat2caom2 import APPLICATION, NEOSSatName
+
+meta_visitors = []
+data_visitors = []
 
 
-__all__ = ['main_app', 'update', 'BlankName', 'COLLECTION', 'APPLICATION']
-
-
-APPLICATION = 'blank2caom2'
-COLLECTION = 'blank'
-
-
-class BlankName(ec.StorageName):
-    """Naming rules:
-    - support mixed-case file name storage, and mixed-case obs id values
-    - support uncompressed files in storage
+def _run():
     """
+    Uses a todo file to identify the work to be done.
 
-    BLANK_NAME_PATTERN = '*'
-
-    def __init__(self, obs_id=None, fname_on_disk=None, file_name=None):
-        self.fname_in_ad = file_name
-        super(BlankName, self).__init__(
-            obs_id, COLLECTION, BlankName.BLANK_NAME_PATTERN, fname_on_disk)
-
-    def is_valid(self):
-        return True
-
-
-def accumulate_bp(bp, uri):
-    """Configure the telescope-specific ObsBlueprint at the CAOM model 
-    Observation level."""
-    logging.debug('Begin accumulate_bp.')
-    bp.configure_position_axes((1,2))
-    bp.configure_time_axis(3)
-    bp.configure_energy_axis(4)
-    bp.configure_polarization_axis(5)
-    bp.configure_observable_axis(6)
-    logging.debug('Done accumulate_bp.')
+    :return 0 if successful, -1 if there's any sort of failure. Return status
+        is used by airflow for task instance management and reporting.
+    """
+    config = mc.Config()
+    config.get_executors()
+    return ec.run_by_file(config, NEOSSatName, APPLICATION,
+                          meta_visitors, data_visitors, chooser=None)
 
 
-def update(observation, **kwargs):
-    """Called to fill multiple CAOM model elements and/or attributes, must
-    have this signature for import_module loading and execution.
-
-    :param observation A CAOM Observation model instance.
-    :param **kwargs Everything else."""
-    logging.debug('Begin update.')
-    mc.check_param(observation, Observation)
-
-    headers = None
-    if 'headers' in kwargs:
-        headers = kwargs['headers']
-    fqn = None
-    if 'fqn' in kwargs:
-        fqn = kwargs['fqn']
-
-    logging.debug('Done update.')
-    return True
-
-
-def _build_blueprints(uri):
-    """This application relies on the caom2utils fits2caom2 ObsBlueprint
-    definition for mapping FITS file values to CAOM model element
-    attributes. This method builds the DRAO-ST blueprint for a single
-    artifact.
-
-    The blueprint handles the mapping of values with cardinality of 1:1
-    between the blueprint entries and the model attributes.
-
-    :param uri The artifact URI for the file to be processed."""
-    module = importlib.import_module(__name__)
-    blueprint = ObsBlueprint(module=module)
-    accumulate_bp(blueprint, uri)
-    blueprints = {uri: blueprint}
-    return blueprints
-
-
-def _get_uri(args):
-    result = None
-    if args.observation:
-        result = BlankName(obs_id=args.observation[1]).file_uri
-    elif args.local:
-        obs_id = BlankName.remove_extensions(os.path.basename(args.local[0]))
-        result = BlankName(obs_id=obs_id).file_uri
-    elif args.lineage:
-        result = args.lineage[0].split('/', 1)[1]
-    else:
-        raise mc.CadcException(
-            'Could not define uri from these args {}'.format(args))
-    return result
-
-
-def main_app():
-    args = get_gen_proc_arg_parser().parse_args()
+def run():
+    """Wraps _run in exception handling, with sys.exit calls."""
     try:
-        uri = _get_uri(args)
-        blueprints = _build_blueprints(uri)
-        gen_proc(args, blueprints)
+        result = _run()
+        sys.exit(result)
     except Exception as e:
-        logging.error('Failed {} execution for {}.'.format(APPLICATION, args))
+        logging.error(e)
         tb = traceback.format_exc()
-        logging.error(tb)
+        logging.debug(tb)
         sys.exit(-1)
 
-    logging.debug('Done {} processing.'.format(APPLICATION))
+
+def _run_state():
+    """Uses a state file with a timestamp to control which entries will be
+    processed.
+    """
+    config = mc.Config()
+    config.get_executors()
+    return ec.run_from_state(config, NEOSSatName, APPLICATION, meta_visitors,
+                             data_visitors, bookmark=None, work=None)
+
+
+def run_state():
+    """Wraps _run_state in exception handling."""
+    try:
+        _run_state()
+        sys.exit(0)
+    except Exception as e:
+        logging.error(e)
+        tb = traceback.format_exc()
+        logging.debug(tb)
+        sys.exit(-1)

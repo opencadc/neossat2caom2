@@ -67,50 +67,116 @@
 # ***********************************************************************
 #
 
+import importlib
+import logging
+import os
 import sys
-import tempfile
+import traceback
 
-from caom2pipe import execute_composable as ec
+from caom2 import Observation
+from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
 from caom2pipe import manage_composable as mc
-from blank2caom2 import APPLICATION, COLLECTION, BlankName
+from caom2pipe import execute_composable as ec
 
 
-meta_visitors = []
-data_visitors = []
+__all__ = ['main_app', 'update', 'NEOSSatName', 'COLLECTION', 'APPLICATION']
 
 
-def run():
-    ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, None, meta_visitors,
-                   data_visitors)
+APPLICATION = 'neossat2caom2'
+COLLECTION = 'NEOSSAT'
 
 
-def run_proxy():
-    proxy = '/usr/src/app/cadcproxy.pem'
-    ec.run_by_file(ec.StorageName, APPLICATION, COLLECTION, proxy, 
-	meta_visitors, data_visitors)
-
-
-def run_single():
+class NEOSSatName(ec.StorageName):
+    """Naming rules:
+    - support mixed-case file name storage, and mixed-case obs id values
+    - support uncompressed files in storage
     """
-    Run the processing for a single entry.
-    :return 0 if successful, -1 if there's any sort of failure. Return status
-        is used by airflow for task instance management and reporting.
-    """
-    config = mc.Config()
-    config.get_executors()
-    config.resource_id = 'ivo://cadc.nrc.ca/sc2repo'
-    if config.features.run_in_airflow:
-        temp = tempfile.NamedTemporaryFile()
-        mc.write_to_file(temp.name, sys.argv[2])
-        config.proxy = temp.name
+
+    BLANK_NAME_PATTERN = '*'
+
+    def __init__(self, obs_id=None, fname_on_disk=None, file_name=None):
+        self.fname_in_ad = file_name
+        super(NEOSSatName, self).__init__(
+            obs_id, COLLECTION, NEOSSatName.BLANK_NAME_PATTERN, fname_on_disk)
+
+    def is_valid(self):
+        return True
+
+
+def accumulate_bp(bp, uri):
+    """Configure the telescope-specific ObsBlueprint at the CAOM model 
+    Observation level."""
+    logging.debug('Begin accumulate_bp.')
+    bp.configure_position_axes((1,2))
+    bp.configure_time_axis(3)
+    bp.configure_energy_axis(4)
+    bp.configure_polarization_axis(5)
+    bp.configure_observable_axis(6)
+    logging.debug('Done accumulate_bp.')
+
+
+def update(observation, **kwargs):
+    """Called to fill multiple CAOM model elements and/or attributes, must
+    have this signature for import_module loading and execution.
+
+    :param observation A CAOM Observation model instance.
+    :param **kwargs Everything else."""
+    logging.debug('Begin update.')
+    mc.check_param(observation, Observation)
+
+    headers = None
+    if 'headers' in kwargs:
+        headers = kwargs['headers']
+    fqn = None
+    if 'fqn' in kwargs:
+        fqn = kwargs['fqn']
+
+    logging.debug('Done update.')
+    return True
+
+
+def _build_blueprints(uri):
+    """This application relies on the caom2utils fits2caom2 ObsBlueprint
+    definition for mapping FITS file values to CAOM model element
+    attributes. This method builds the DRAO-ST blueprint for a single
+    artifact.
+
+    The blueprint handles the mapping of values with cardinality of 1:1
+    between the blueprint entries and the model attributes.
+
+    :param uri The artifact URI for the file to be processed."""
+    module = importlib.import_module(__name__)
+    blueprint = ObsBlueprint(module=module)
+    accumulate_bp(blueprint, uri)
+    blueprints = {uri: blueprint}
+    return blueprints
+
+
+def _get_uri(args):
+    result = None
+    if args.observation:
+        result = NEOSSatName(obs_id=args.observation[1]).file_uri
+    elif args.local:
+        obs_id = NEOSSatName.remove_extensions(os.path.basename(args.local[0]))
+        result = NEOSSatName(obs_id=obs_id).file_uri
+    elif args.lineage:
+        result = args.lineage[0].split('/', 1)[1]
     else:
-        config.proxy = sys.argv[2]
-    config.stream = 'raw'
-    if config.features.use_file_names:
-        storage_name = ec.StorageName(file_name=sys.argv[1])
-    else:
-        obs_id = ec.StorageName.remove_extensions(sys.argv[1])
-        storage_name = BlankName(obs_id=obs_id)
-    result = ec.run_single(config, storage_name, APPLICATION, meta_visitors,
-                           data_visitors)
-    sys.exit(result)
+        raise mc.CadcException(
+            'Could not define uri from these args {}'.format(args))
+    return result
+
+
+def main_app():
+    args = get_gen_proc_arg_parser().parse_args()
+    try:
+        uri = _get_uri(args)
+        blueprints = _build_blueprints(uri)
+        gen_proc(args, blueprints)
+    except Exception as e:
+        logging.error('Failed {} execution for {}.'.format(APPLICATION, args))
+        tb = traceback.format_exc()
+        logging.debug(tb)
+        sys.exit(-1)
+
+    logging.debug('Done {} processing.'.format(APPLICATION))

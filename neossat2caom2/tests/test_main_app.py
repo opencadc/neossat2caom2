@@ -66,8 +66,47 @@
 #
 # ***********************************************************************
 #
-from blank2caom2 import BlankName
+import pytest
+
+from neossat2caom2 import main_app, NEOSSatName, APPLICATION, COLLECTION
+from caom2.diff import get_differences
+from caom2pipe import manage_composable as mc
+
+import os
+import sys
+
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
+PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
 
 
-def test_is_valid():
-    assert BlankName('anything').is_valid()
+# def pytest_generate_tests(metafunc):
+#     if os.path.exists(TESTDATA_DIR):
+#         files = [os.path.join(TESTDATA_DIR, name) for name in
+#                  os.listdir(TESTDATA_DIR) if name.endswith('header')]
+#         metafunc.parametrize('test_name', files)
+
+
+@pytest.mark.parametrize('test_name', [])
+def test_main_app(test_name):
+    basename = os.path.basename(test_name)
+    drao_name = NEOSSatName(fname_on_disk=basename)
+    output_file = '{}.actual.xml'.format(test_name)
+
+    sys.argv = \
+        ('{} --debug --no_validate --local {} --observation {} {} -o {} '
+         '--lineage {}'.
+         format(APPLICATION, test_name, COLLECTION, drao_name.obs_id,
+                output_file, drao_name.lineage)).split()
+    print(sys.argv)
+    main_app()
+    obs_path = '{}/{}'.format(TEST_DATA_DIR, 'RN43.xml')
+    expected = mc.read_obs_from_file(obs_path)
+    actual = mc.read_obs_from_file(output_file)
+    result = get_differences(expected, actual, 'Observation')
+    if result:
+        msg = 'Differences found in observation {}\n{}'. \
+            format(expected.observation_id, '\n'.join(
+            [r for r in result]))
+        raise AssertionError(msg)
+    # assert False  # cause I want to see logging messages
