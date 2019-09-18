@@ -374,12 +374,16 @@ def _build_chunk_energy(chunk, headers):
 
         filter_name = headers[0].get('FILTER')
 
+        resolving_power = None
+        wavelength = headers[0].get('WAVELENG')
+        if wavelength is not None:
+            resolving_power = wavelength / (max_wl - min_wl)
         energy = SpectralWCS(axis=axis,
                              specsys='TOPOCENT',
                              ssyssrc='TOPOCENT',
                              ssysobs='TOPOCENT',
                              bandpass_name=filter_name,
-                             resolving_power=None)
+                             resolving_power=resolving_power)
         chunk.energy = energy
         chunk.energy_axis = 4
 
@@ -411,11 +415,11 @@ def _build_chunk_position(chunk, headers, obs_id):
         y_binning = 1.0
     header['CDELT2'] = 3.0 * y_binning / 3600.0
 
-    obj_ctrol = header.get('OBJCTROL')
-    if obj_ctrol is None:
-        obj_ctrol = 0.0
-    header['CROTA2'] = 90.0 - obj_ctrol
-    header['CROTA1'] = 0.0
+    objct_rol = header.get('OBJCTROL')
+    if objct_rol is None:
+        objct_rol = 0.0
+    header['CROTA2'] = 90.0 - objct_rol
+    # header['CROTA1'] = 0.0
 
     # header['CD1_1'] = 0.00083333
 
