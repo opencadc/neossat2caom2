@@ -74,19 +74,21 @@ import sys
 import traceback
 
 from caom2 import Observation, CalibrationLevel, Axis, CoordAxis1D
-from caom2 import RefCoord, SpectralWCS, CoordRange1D
+from caom2 import RefCoord, SpectralWCS, CoordRange1D, Chunk
 from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
+from caom2utils import WcsParser
 from caom2pipe import astro_composable as ac
 from caom2pipe import manage_composable as mc
 from caom2pipe import execute_composable as ec
 
 
 __all__ = ['neossat_main_app', 'update', 'NEOSSatName', 'COLLECTION',
-           'APPLICATION']
+           'APPLICATION', 'ARCHIVE']
 
 
 APPLICATION = 'neossat2caom2'
 COLLECTION = 'NEOSSAT'
+ARCHIVE = 'NEOSS'
 
 
 class NEOSSatName(ec.StorageName):
@@ -103,13 +105,19 @@ class NEOSSatName(ec.StorageName):
         elif file_name is not None:
             fname_on_disk = file_name
             obs_id = NEOSSatName.remove_extensions(
-                file_name.replace('_clean', '').replace('NEOS_SCI_', ''))
+                NEOSSatName.extract_obs_id(file_name))
+            self._product_id = NEOSSatName.extract_product_id(file_name)
         self._file_name = fname_on_disk.replace('.header', '')
         super(NEOSSatName, self).__init__(
-            obs_id, COLLECTION, NEOSSatName.BLANK_NAME_PATTERN, fname_on_disk)
+            obs_id, COLLECTION, NEOSSatName.BLANK_NAME_PATTERN, fname_on_disk,
+            archive=ARCHIVE)
 
     def is_valid(self):
         return True
+
+    @property
+    def product_id(self):
+        return self._product_id
 
     @property
     def file_name(self):
@@ -124,6 +132,27 @@ class NEOSSatName(ec.StorageName):
     @staticmethod
     def remove_extensions(value):
         return value.replace('.fits', '').replace('.header', '')
+
+    @staticmethod
+    def extract_obs_id(value):
+        return value.replace('_clean', '').replace('NEOS_SCI_', '').replace(
+            '_cord', '').replace('_cor', '')
+
+    @staticmethod
+    def extract_product_id(value):
+        # DB 18-09-19
+        # I think JJ suggested that product ID should be ‘cor’,  ‘cord’,
+        # and so maybe ‘clean’.  i.e. depends on the trailing characters
+        # after final underscore in the file name.  Perhaps ‘raw’ for files
+        # without any such characters.
+        result = 'raw'
+        if '_cord' in value:
+            result = 'cord'
+        elif '_cor' in value:
+            result = 'cor'
+        elif '_clean' in value:
+            result = 'clean'
+        return result
 
 
 def get_coord1_pix(header):
@@ -144,7 +173,24 @@ def get_dec(header):
 
 
 def get_obs_intent(header):
-    return header.get('INTENT').lower()
+    result = header.get('INTENT')
+    if result is not None:
+        result = result.lower()
+    return result
+
+
+def get_position_axis_function_naxis1(header):
+    result = mc.to_int(header.get('NAXIS1'))
+    if result is not None:
+        result = result / 2.0
+    return result
+
+
+def get_position_axis_function_naxis2(header):
+    result = mc.to_int(header.get('NAXIS2'))
+    if result is not None:
+        result = result / 2.0
+    return result
 
 
 def get_ra(header):
@@ -161,7 +207,10 @@ def get_target_moving(header):
 
 
 def get_target_type(header):
-    return header.get('TARGTYPE').lower()
+    result = header.get('TARGTYPE')
+    if result is not None:
+        result = result.lower()
+    return result
 
 
 def get_time_delta(header):
@@ -178,19 +227,18 @@ def _get_energy(header):
     min_wl = None
     max_wl = None
     # header units are Angstroms
-    wavelength = mc.to_float(header.get('WAVELENG')) / 1e4
     bandpass = header.get('BANDPASS')
     if bandpass is not None:
         temp = bandpass.split(',')
         min_wl = mc.to_float(temp[0]) / 1e4
         max_wl = mc.to_float(temp[1]) / 1e4
-    return min_wl, max_wl, wavelength
+    return min_wl, max_wl
 
 
 def _get_position(header):
     ra = header.get('RA')
     dec = header.get('DEC')
-    return ac.build_ra_dec_deg(ra, dec)
+    return ac.build_ra_dec_as_deg(ra, dec)
 
 
 def accumulate_bp(bp, uri):
@@ -211,8 +259,11 @@ def accumulate_bp(bp, uri):
     bp.set('Observation.target.type', 'get_target_type(header)')
     bp.set('Observation.target.moving', 'get_target_moving(header)')
 
-    bp.configure_polarization_axis(5)
-    bp.configure_observable_axis(6)
+    bp.clear('Observation.proposal.id')
+    bp.add_fits_attribute('Observation.proposal.id', 'PROP_ID')
+
+    bp.clear('Plane.metaRelease')
+    bp.add_fits_attribute('Plane.metaRelease', 'DATE-OBS')
 
     bp.set('Plane.dataProductType', 'image')
     if 'clean' in uri:
@@ -230,35 +281,35 @@ def accumulate_bp(bp, uri):
     bp.clear('Plane.provenance.runID')
     bp.add_fits_attribute('Plane.provenance.runID', 'RUNID')
 
-    bp.configure_position_axes((1, 2))
-    bp.set('Chunk.position.axis.axis1.ctype', 'RA---TAN')
-    bp.set('Chunk.position.axis.axis2.ctype', 'DEC--TAN')
-    bp.set('Chunk.position.axis.axis1.cunit', 'deg')
-    bp.set('Chunk.position.axis.axis2.cunit', 'deg')
-    bp.clear('Chunk.position.axis.function.dimension.naxis1')
-    bp.add_fits_attribute('Chunk.position.axis.function.dimension.naxis1',
-                          'NAXIS1')
-    bp.clear('Chunk.position.axis.function.dimension.naxis2')
-    bp.add_fits_attribute('Chunk.position.axis.function.dimension.naxis2',
-                          'NAXIS2')
-    bp.clear('Chunk.position.axis.function.refCoord.coord1.pix')
-    bp.add_fits_attribute(
-        'Chunk.position.axis.function.refCoord.coord1.pix',
-        'get_coord1_pix(header)')
-    bp.clear('Chunk.position.axis.function.refCoord.coord1.val')
-    bp.add_fits_attribute(
-        'Chunk.position.axis.function.refCoord.coord1.val', 'get_ra(header)')
-    bp.clear('Chunk.position.axis.function.refCoord.coord2.pix')
-    bp.add_fits_attribute(
-        'Chunk.position.axis.function.refCoord.coord2.pix',
-        'get_coord2_pix(header)')
-    bp.clear('Chunk.position.axis.function.refCoord.coord2.val')
-    bp.add_fits_attribute(
-        'Chunk.position.axis.function.refCoord.coord2.val', 'get_dec(header)')
-    bp.set('Chunk.position.axis.function.cd11', 0.00083333)
-    bp.set('Chunk.position.axis.function.cd12', 0.0)
-    bp.set('Chunk.position.axis.function.cd21', 0.0)
-    bp.set('Chunk.position.axis.function.cd22', 0.00083333)
+    bp.set_default('Artifact.releaseType', 'meta')
+
+    # bp.configure_position_axes((1, 2))
+    # bp.set('Chunk.position.axis.axis1.ctype', 'RA---TAN')
+    # bp.set('Chunk.position.axis.axis2.ctype', 'DEC--TAN')
+    # bp.set('Chunk.position.axis.axis1.cunit', 'deg')
+    # bp.set('Chunk.position.axis.axis2.cunit', 'deg')
+    # bp.set('Chunk.position.axis.function.dimension.naxis1',
+    #        'get_position_axis_function_naxis1(header)')
+    # bp.set('Chunk.position.axis.function.dimension.naxis2',
+    #        'get_position_axis_function_naxis2(header)')
+    # bp.clear('Chunk.position.axis.function.refCoord.coord1.pix')
+    # bp.add_fits_attribute(
+    #     'Chunk.position.axis.function.refCoord.coord1.pix',
+    #     'get_coord1_pix(header)')
+    # bp.clear('Chunk.position.axis.function.refCoord.coord1.val')
+    # bp.add_fits_attribute(
+    #     'Chunk.position.axis.function.refCoord.coord1.val', 'get_ra(header)')
+    # bp.clear('Chunk.position.axis.function.refCoord.coord2.pix')
+    # bp.add_fits_attribute(
+    #     'Chunk.position.axis.function.refCoord.coord2.pix',
+    #     'get_coord2_pix(header)')
+    # bp.clear('Chunk.position.axis.function.refCoord.coord2.val')
+    # bp.add_fits_attribute(
+    #     'Chunk.position.axis.function.refCoord.coord2.val', 'get_dec(header)')
+    # bp.set('Chunk.position.axis.function.cd11', 0.00083333)
+    # bp.set('Chunk.position.axis.function.cd12', 0.0)
+    # bp.set('Chunk.position.axis.function.cd21', 0.0)
+    # bp.set('Chunk.position.axis.function.cd22', 0.00083333)
 
     bp.configure_time_axis(3)
     bp.set('Chunk.time.axis.axis.ctype', 'TIME')
@@ -270,6 +321,9 @@ def accumulate_bp(bp, uri):
            'get_time_function_val(header)')
     bp.clear('Chunk.time.exposure')
     bp.add_fits_attribute('Chunk.time.exposure', 'EXPOSURE')
+
+    bp.configure_polarization_axis(5)
+    bp.configure_observable_axis(6)
 
     logging.debug('Done accumulate_bp.')
 
@@ -295,28 +349,82 @@ def update(observation, **kwargs):
             for part in artifact.parts.values():
                 for chunk in part.chunks:
                     _build_chunk_energy(chunk, headers)
+                    _build_chunk_position(
+                        chunk, headers, observation.observation_id)
 
     logging.debug('Done update.')
     return observation
 
 
 def _build_chunk_energy(chunk, headers):
-    min_wl, max_wl, wl = _get_energy(headers[0])
+    # DB 18-09-19
+    # NEOSSat folks wanted the min/max wavelengths in the BANDPASS keyword to
+    # be used as the upper/lower wavelengths.  BANDPASS = ‘4000,9000’ so
+    # ref_coord1 = RefCoord(0.5, 4000) and ref_coord2 = RefCoord(1.5, 9000).
+    # The WAVELENG value is not used for anything since they opted to do it
+    # this way.  They interpret WAVELENG as being the wavelengh of peak
+    # throughput of the system I think.
+
+    min_wl, max_wl = _get_energy(headers[0])
     axis = CoordAxis1D(axis=Axis(ctype='WAVE', cunit='um'))
-    ref_coord1 = RefCoord(0.5, wl - (max_wl - min_wl) / 2.0)
-    ref_coord2 = RefCoord(1.5, wl + (max_wl - min_wl) / 2.0)
-    axis.range = CoordRange1D(ref_coord1, ref_coord2)
+    if min_wl is not None and max_wl is not None:
+        ref_coord1 = RefCoord(0.5, min_wl / 2.0)
+        ref_coord2 = RefCoord(1.5, max_wl / 2.0)
+        axis.range = CoordRange1D(ref_coord1, ref_coord2)
 
-    filter_name = headers[0].get('FILTER')
+        filter_name = headers[0].get('FILTER')
 
-    energy = SpectralWCS(axis=axis,
-                         specsys='TOPOCENT',
-                         ssyssrc='TOPOCENT',
-                         ssysobs='TOPOCENT',
-                         bandpass_name=filter_name,
-                         resolving_power=None)
-    chunk.energy = energy
-    chunk.energy_axis = 4
+        energy = SpectralWCS(axis=axis,
+                             specsys='TOPOCENT',
+                             ssyssrc='TOPOCENT',
+                             ssysobs='TOPOCENT',
+                             bandpass_name=filter_name,
+                             resolving_power=None)
+        chunk.energy = energy
+        chunk.energy_axis = 4
+
+
+def _build_chunk_position(chunk, headers, obs_id):
+    # DB 18-08-19
+    # Ignoring rotation for now:  Use CRVAL1 = RA from header, CRVAL2 = DEC
+    # from header.  NAXIS1/NAXIS2 values gives number of pixels along RA/DEC
+    # axes (again, ignoring rotation) and assume CRPIX1 = NAXIS1/2.0 and
+    # CRPIX2 = NAXIS2/2.0 (i.e. in centre of image).   XBINNING/YBINNING
+    # give binning values along RA/DEC axes.   CDELT1 (scale in
+    # degrees/pixel; it’s 3 arcsec/unbinned pixel)= 3.0*XBINNING/3600.0
+    # CDELT2 = 3.0*YBINNING/3600.0.  Set CROTA2=0.0
+    header = headers[0]
+    header['CTYPE1'] = 'RA---TAN'
+    header['CTYPE2'] = 'DEC--TAN'
+    header['CUNIT1'] = 'deg'
+    header['CUNIT2'] = 'deg'
+    header['CRVAL1'] = get_ra(header)
+    header['CRVAL2'] = get_dec(header)
+    header['CRPIX1'] = get_position_axis_function_naxis1(header)
+    header['CRPIX2'] = get_position_axis_function_naxis2(header)
+    x_binning = header.get('XBINNING')
+    if x_binning is None:
+        x_binning = 1.0
+    header['CDELT1'] = 3.0 * x_binning / 3600.0
+    y_binning = header.get('YBINNING')
+    if y_binning is None:
+        y_binning = 1.0
+    header['CDELT2'] = 3.0 * y_binning / 3600.0
+
+    obj_ctrol = header.get('OBJCTROL')
+    if obj_ctrol is None:
+        obj_ctrol = 0.0
+    header['CROTA2'] = 90.0 - obj_ctrol
+    header['CROTA1'] = 0.0
+
+    # header['CD1_1'] = 0.00083333
+
+    wcs_parser = WcsParser(header, obs_id, 0)
+    if chunk is None:
+        chunk = Chunk()
+    wcs_parser.augment_position(chunk)
+    chunk.position_axis_1 = 1
+    chunk.position_axis_2 = 2
 
 
 def _build_blueprints(uri):

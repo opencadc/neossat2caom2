@@ -71,7 +71,7 @@ import pytest
 from mock import patch
 
 from neossat2caom2 import neossat_main_app, NEOSSatName, APPLICATION
-from neossat2caom2 import COLLECTION
+from neossat2caom2 import COLLECTION, ARCHIVE
 from caom2.diff import get_differences
 from caom2pipe import manage_composable as mc
 
@@ -83,11 +83,24 @@ TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
 PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
 
 
+LOOKUP = {'2019213173800': ['NEOS_SCI_2019213173800',
+                            'NEOS_SCI_2019213173800_cor',
+                            'NEOS_SCI_2019213173800_cord'],
+          '2019258000140': ['NEOS_SCI_2019258000140',
+                            'NEOS_SCI_2019258000140_clean'],
+          '2019259111450': ['NEOS_SCI_2019259111450',
+                            'NEOS_SCI_2019259111450_clean']}
+
+
 def pytest_generate_tests(metafunc):
-    if os.path.exists(TEST_DATA_DIR):
-        files = [os.path.join(TEST_DATA_DIR, name) for name in
-                 os.listdir(TEST_DATA_DIR) if name.endswith('header')]
-        metafunc.parametrize('test_name', files)
+    obs_id_list = []
+    for ii in LOOKUP:
+        obs_id_list.append(ii)
+    metafunc.parametrize('test_name', obs_id_list)
+    # if os.path.exists(TEST_DATA_DIR):
+    #     files = [os.path.join(TEST_DATA_DIR, name) for name in
+    #              os.listdir(TEST_DATA_DIR) if name.endswith('header')]
+    #     metafunc.parametrize('test_name', files)
 
 
 def test_main_app(test_name):
@@ -95,21 +108,20 @@ def test_main_app(test_name):
     neos_name = NEOSSatName(file_name=basename)
     output_file = '{}/actual.{}.xml'.format(TEST_DATA_DIR, basename)
     obs_path = '{}/{}'.format(TEST_DATA_DIR, 'expected.{}.xml'.format(
-        neos_name.file_name))
+        neos_name.obs_id))
     expected = mc.read_obs_from_file(obs_path)
 
     with patch('caom2utils.fits2caom2.CadcDataClient') as data_client_mock:
         def get_file_info(archive, file_id):
-            return {'size': 55425600,
-                    'md5sum': '40f7c2763f92ea6e9c6b0304c569097e',
-                    'type': 'application/fits'}
+            return {'type': 'application/fits'}
 
         data_client_mock.return_value.get_file_info.side_effect = get_file_info
         sys.argv = \
             ('{} --no_validate --local {} --observation {} {} -o {} '
              '--plugin {} --module {} --lineage {}'.
-             format(APPLICATION, test_name, COLLECTION, neos_name.obs_id,
-                    output_file, PLUGIN, PLUGIN, neos_name.lineage)).split()
+             format(APPLICATION, _get_local(test_name), COLLECTION,
+                    test_name, output_file, PLUGIN, PLUGIN,
+                    _get_lineage(test_name))).split()
         print(sys.argv)
         neossat_main_app()
 
@@ -121,3 +133,19 @@ def test_main_app(test_name):
             [r for r in result]))
         raise AssertionError(msg)
     # assert False  # cause I want to see logging messages
+
+
+def _get_lineage(obs_id):
+    result = ''
+    for ii in LOOKUP[obs_id]:
+        product_id = NEOSSatName.extract_product_id(ii)
+        fits = mc.get_lineage(ARCHIVE, product_id, '{}.fits'.format(ii))
+        result = '{} {}'.format(result, fits)
+    return result
+
+
+def _get_local(obs_id):
+    result = ''
+    for ii in LOOKUP[obs_id]:
+        result = '{} {}/{}.fits.header'.format(result, TEST_DATA_DIR, ii)
+    return result
