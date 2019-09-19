@@ -64,17 +64,17 @@
                         <caom2:refCoord>
                           <caom2:coord1>
                             <caom2:pix>544.0</caom2:pix>
-                            <caom2:val>134.1041666666667</caom2:val>
+                            <caom2:val>134.10416666666666</caom2:val>
                           </caom2:coord1>
                           <caom2:coord2>
-                            <caom2:pix>515.0</caom2:pix>
-                            <caom2:val>28.99688888888889</caom2:val>
+                            <caom2:pix>544.0</caom2:pix>
+                            <caom2:val>134.10416666666666</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>0.000833333333333333</caom2:cd11>
-                        <caom2:cd12>0.0</caom2:cd12>
-                        <caom2:cd21>1.301609999999997</caom2:cd21>
-                        <caom2:cd22>0.000833333333333333</caom2:cd22>
+                        <caom2:cd11>0.00022162262827040568</caom2:cd11>
+                        <caom2:cd12>0.0008033230079382527</caom2:cd12>
+                        <caom2:cd21>-0.0008033230079382527</caom2:cd21>
+                        <caom2:cd22>0.00022162262827040568</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
@@ -89,11 +89,11 @@
                       <caom2:range>
                         <caom2:start>
                           <caom2:pix>0.5</caom2:pix>
-                          <caom2:val>0.2</caom2:val>
+                          <caom2:val>0.4</caom2:val>
                         </caom2:start>
                         <caom2:end>
                           <caom2:pix>1.5</caom2:pix>
-                          <caom2:val>0.45</caom2:val>
+                          <caom2:val>0.9</caom2:val>
                         </caom2:end>
                       </caom2:range>
                     </caom2:axis>
@@ -173,17 +173,17 @@
                         <caom2:refCoord>
                           <caom2:coord1>
                             <caom2:pix>544.0</caom2:pix>
-                            <caom2:val>134.1041666666667</caom2:val>
+                            <caom2:val>134.10416666666666</caom2:val>
                           </caom2:coord1>
                           <caom2:coord2>
-                            <caom2:pix>515.0</caom2:pix>
-                            <caom2:val>28.99688888888889</caom2:val>
+                            <caom2:pix>544.0</caom2:pix>
+                            <caom2:val>134.10416666666666</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>0.000833333333333333</caom2:cd11>
-                        <caom2:cd12>0.0</caom2:cd12>
-                        <caom2:cd21>1.301609999999997</caom2:cd21>
-                        <caom2:cd22>0.000833333333333333</caom2:cd22>
+                        <caom2:cd11>0.00022162262827040568</caom2:cd11>
+                        <caom2:cd12>0.0008033230079382527</caom2:cd12>
+                        <caom2:cd21>-0.0008033230079382527</caom2:cd21>
+                        <caom2:cd22>0.00022162262827040568</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
@@ -198,11 +198,11 @@
                       <caom2:range>
                         <caom2:start>
                           <caom2:pix>0.5</caom2:pix>
-                          <caom2:val>0.2</caom2:val>
+                          <caom2:val>0.4</caom2:val>
                         </caom2:start>
                         <caom2:end>
                           <caom2:pix>1.5</caom2:pix>
-                          <caom2:val>0.45</caom2:val>
+                          <caom2:val>0.9</caom2:val>
                         </caom2:end>
                       </caom2:range>
                     </caom2:axis>

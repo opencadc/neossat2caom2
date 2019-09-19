@@ -69,6 +69,7 @@
 
 import importlib
 import logging
+import math
 import os
 import sys
 import traceback
@@ -368,8 +369,8 @@ def _build_chunk_energy(chunk, headers):
     min_wl, max_wl = _get_energy(headers[0])
     axis = CoordAxis1D(axis=Axis(ctype='WAVE', cunit='um'))
     if min_wl is not None and max_wl is not None:
-        ref_coord1 = RefCoord(0.5, min_wl / 2.0)
-        ref_coord2 = RefCoord(1.5, max_wl / 2.0)
+        ref_coord1 = RefCoord(0.5, min_wl)
+        ref_coord2 = RefCoord(1.5, max_wl)
         axis.range = CoordRange1D(ref_coord1, ref_coord2)
 
         filter_name = headers[0].get('FILTER')
@@ -409,26 +410,62 @@ def _build_chunk_position(chunk, headers, obs_id):
     x_binning = header.get('XBINNING')
     if x_binning is None:
         x_binning = 1.0
-    header['CDELT1'] = 3.0 * x_binning / 3600.0
+    cdelt1 = 3.0 * x_binning / 3600.0
     y_binning = header.get('YBINNING')
     if y_binning is None:
         y_binning = 1.0
-    header['CDELT2'] = 3.0 * y_binning / 3600.0
+    cdelt2 = 3.0 * y_binning / 3600.0
 
     objct_rol = header.get('OBJCTROL')
     if objct_rol is None:
         objct_rol = 0.0
-    header['CROTA2'] = 90.0 - objct_rol
+    # header['CROTA2'] = 90.0 - objct_rol
     # header['CROTA1'] = 0.0
 
     # header['CD1_1'] = 0.00083333
+    # header['CD1_2'] = 0.0
+    # header['CD2_1'] = 0.0
+    # header['CD2_2'] = 0.00083333
 
     wcs_parser = WcsParser(header, obs_id, 0)
     if chunk is None:
         chunk = Chunk()
     wcs_parser.augment_position(chunk)
+
     chunk.position_axis_1 = 1
     chunk.position_axis_2 = 2
+
+    # for ii in wcs_parser.header:
+    #     logging.error('{:<8s} = {}'.format(ii, wcs_parser.header.get(ii)))
+
+    crota2 = 90.0 - objct_rol
+    cd11 = cdelt1 * math.cos(crota2)
+    cd12 = abs(cdelt2) * _sign(cdelt1) * math.sin(crota2)
+    cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2)
+    cd22 = cdelt2 * math.cos(crota2)
+
+    from caom2 import CoordFunction2D, Dimension2D, Coord2D
+
+    dimension = Dimension2D(header.get('NAXIS1'),
+                            header.get('NAXIS2'))
+    x = RefCoord(get_position_axis_function_naxis1(header),
+                 get_ra(header))
+    y = RefCoord(get_position_axis_function_naxis1(header),
+                 get_ra(header))
+    ref_coord = Coord2D(x, y)
+    function = CoordFunction2D(dimension,
+                               ref_coord,
+                               cd11,
+                               cd12,
+                               cd21,
+                               cd22)
+    chunk.position.axis.function = function
+    logging.error(obs_id)
+    logging.error(chunk.position.axis.function)
+
+
+def _sign(value):
+    return -1.0 if value < 0.0 else 1.0
 
 
 def _build_blueprints(uri):

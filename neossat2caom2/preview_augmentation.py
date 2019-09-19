@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -68,59 +68,88 @@
 #
 
 import logging
-import sys
-import traceback
+import os
 
+from datetime import datetime
+
+from caom2 import Observation, ReleaseType, ProductType
 from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
-from neossat2caom2 import APPLICATION, NEOSSatName, preview_augmentation
-
-meta_visitors = []
-data_visitors = [preview_augmentation]
+from neossat2caom2 import ARCHIVE, NEOSSatName
 
 
-def _run():
-    """
-    Uses a todo file to identify the work to be done.
+def visit(observation, **kwargs):
+    mc.check_param(observation, Observation)
 
-    :return 0 if successful, -1 if there's any sort of failure. Return status
-        is used by airflow for task instance management and reporting.
-    """
-    config = mc.Config()
-    config.get_executors()
-    return ec.run_by_file(config, NEOSSatName, APPLICATION,
-                          meta_visitors, data_visitors, chooser=None)
+    working_dir = './'
+    if 'working_directory' in kwargs:
+        working_dir = kwargs['working_directory']
+    if 'cadc_client' in kwargs:
+        cadc_client = kwargs['cadc_client']
+    else:
+        raise mc.CadcException('Visitor needs a cadc_client parameter.')
+    if 'stream' in kwargs:
+        stream = kwargs['stream']
+    else:
+        raise mc.CadcException('Visitor needs a stream parameter.')
+    if 'observable' in kwargs:
+        observable = kwargs['observable']
+    else:
+        raise mc.CadcException('Visitor needs a observable parameter.')
 
-
-def run():
-    """Wraps _run in exception handling, with sys.exit calls."""
-    try:
-        result = _run()
-        sys.exit(result)
-    except Exception as e:
-        logging.error(e)
-        tb = traceback.format_exc()
-        logging.debug(tb)
-        sys.exit(-1)
-
-
-def _run_state():
-    """Uses a state file with a timestamp to control which entries will be
-    processed.
-    """
-    config = mc.Config()
-    config.get_executors()
-    return ec.run_from_state(config, NEOSSatName, APPLICATION, meta_visitors,
-                             data_visitors, bookmark=None, work=None)
+    count = 0
+    for plane in observation.planes.values():
+        for artifact in plane.artifacts.values():
+            if artifact.uri.endswith('.fits'):
+                count += _do_prev(artifact, plane, working_dir, cadc_client,
+                                  stream, observable)
+    logging.info('Completed preview augmentation for {}.'.format(
+        observation.observation_id))
+    return {'artifacts': count}
 
 
-def run_state():
-    """Wraps _run_state in exception handling."""
-    try:
-        _run_state()
-        sys.exit(0)
-    except Exception as e:
-        logging.error(e)
-        tb = traceback.format_exc()
-        logging.debug(tb)
-        sys.exit(-1)
+def _augment(plane, uri, fqn, product_type):
+    temp = None
+    if uri in plane.artifacts:
+        temp = plane.artifacts[uri]
+    plane.artifacts[uri] = mc.get_artifact_metadata(fqn, product_type,
+                                                    ReleaseType.META, uri,
+                                                    temp)
+
+
+def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
+             # ,file_id, science_fqn, working_dir, plane, cadc_client, metrics):
+    naming = ec.CaomName(artifact.uri)
+    preview = NEOSSatName(file_name=naming.file_name).prev
+    preview_fqn = os.path.join(working_dir, preview)
+    thumb = NEOSSatName(file_name=naming.file_name).thumb
+    thumb_fqn = os.path.join(working_dir, thumb)
+    science_fqn = os.path.join(working_dir, naming.file_name)
+
+    if os.access(preview_fqn, 0):
+        os.remove(preview_fqn)
+    prev_convert_cmd = 'convert -resize 1024x1024 -normalize -negate {} {}'.format(
+            science_fqn, preview_fqn)
+    mc.exec_cmd(prev_convert_cmd)
+
+    if os.access(thumb_fqn, 0):
+        os.remove(thumb_fqn)
+    thumb_convert_cmd = 'convert -resize 256x256 -normalize -negate {} {}'.format(
+        science_fqn, thumb_fqn)
+    mc.exec_cmd(thumb_convert_cmd)
+
+    prev_uri = NEOSSatName(file_name=naming.file_name).prev_uri
+    thumb_uri = NEOSSatName(file_name=naming.file_name).thumb_uri
+    _store_smalls(cadc_client, working_dir, preview, thumb,
+                  observable.metrics, stream)
+    _augment(plane, prev_uri, preview_fqn, ProductType.PREVIEW)
+    _augment(plane, thumb_uri, thumb_fqn, ProductType.THUMBNAIL)
+    return 2
+
+
+def _store_smalls(cadc_client, working_directory, preview_fname,
+                  thumb_fname, metrics, stream):
+    mc.data_put(cadc_client, working_directory, preview_fname, ARCHIVE,
+                stream, mime_type='image/jpeg', metrics=metrics)
+    mc.data_put(cadc_client, working_directory, thumb_fname, ARCHIVE, stream,
+                mime_type='image/jpeg', metrics=metrics)
