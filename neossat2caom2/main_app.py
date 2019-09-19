@@ -439,10 +439,13 @@ def _build_chunk_position(chunk, headers, obs_id):
     #     logging.error('{:<8s} = {}'.format(ii, wcs_parser.header.get(ii)))
 
     crota2 = 90.0 - objct_rol
-    cd11 = cdelt1 * math.cos(crota2)
-    cd12 = abs(cdelt2) * _sign(cdelt1) * math.sin(crota2)
-    cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2)
-    cd22 = cdelt2 * math.cos(crota2)
+    from astropy import units as u
+    crota2_rad = u.degree.to(u.radian, crota2)
+    crota2_rad = math.radians(crota2)
+    cd11 = cdelt1 * math.cos(crota2_rad)
+    cd12 = abs(cdelt2) * _sign(cdelt1) * math.sin(crota2_rad)
+    cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2_rad)
+    cd22 = cdelt2 * math.cos(crota2_rad)
 
     from caom2 import CoordFunction2D, Dimension2D, Coord2D
 
@@ -450,8 +453,8 @@ def _build_chunk_position(chunk, headers, obs_id):
                             header.get('NAXIS2'))
     x = RefCoord(get_position_axis_function_naxis1(header),
                  get_ra(header))
-    y = RefCoord(get_position_axis_function_naxis1(header),
-                 get_ra(header))
+    y = RefCoord(get_position_axis_function_naxis2(header),
+                 get_dec(header))
     ref_coord = Coord2D(x, y)
     function = CoordFunction2D(dimension,
                                ref_coord,

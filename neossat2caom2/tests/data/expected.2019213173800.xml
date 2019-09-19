@@ -57,13 +57,13 @@
                           </caom2:coord1>
                           <caom2:coord2>
                             <caom2:pix>256.0</caom2:pix>
-                            <caom2:val>343.36458333333326</caom2:val>
+                            <caom2:val>-30.077111111111112</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>0.0001619836255982359</caom2:cd11>
-                        <caom2:cd12>0.0008174385294824896</caom2:cd12>
-                        <caom2:cd21>-0.0008174385294824896</caom2:cd21>
-                        <caom2:cd22>0.0001619836255982359</caom2:cd22>
+                        <caom2:cd11>0.0008174874800280594</caom2:cd11>
+                        <caom2:cd12>-0.00016173640419465778</caom2:cd12>
+                        <caom2:cd21>0.00016173640419465778</caom2:cd21>
+                        <caom2:cd22>0.0008174874800280594</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
@@ -140,13 +140,13 @@
                           </caom2:coord1>
                           <caom2:coord2>
                             <caom2:pix>256.0</caom2:pix>
-                            <caom2:val>343.36458333333326</caom2:val>
+                            <caom2:val>-30.077111111111112</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>0.0001619836255982359</caom2:cd11>
-                        <caom2:cd12>0.0008174385294824896</caom2:cd12>
-                        <caom2:cd21>-0.0008174385294824896</caom2:cd21>
-                        <caom2:cd22>0.0001619836255982359</caom2:cd22>
+                        <caom2:cd11>0.0008174874800280594</caom2:cd11>
+                        <caom2:cd12>-0.00016173640419465778</caom2:cd12>
+                        <caom2:cd21>0.00016173640419465778</caom2:cd21>
+                        <caom2:cd22>0.0008174874800280594</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
@@ -223,13 +223,13 @@
                           </caom2:coord1>
                           <caom2:coord2>
                             <caom2:pix>256.0</caom2:pix>
-                            <caom2:val>343.36458333333326</caom2:val>
+                            <caom2:val>-30.077111111111112</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>0.0001619836255982359</caom2:cd11>
-                        <caom2:cd12>0.0008174385294824896</caom2:cd12>
-                        <caom2:cd21>-0.0008174385294824896</caom2:cd21>
-                        <caom2:cd22>0.0001619836255982359</caom2:cd22>
+                        <caom2:cd11>0.0008174874800280594</caom2:cd11>
+                        <caom2:cd12>-0.00016173640419465778</caom2:cd12>
+                        <caom2:cd21>0.00016173640419465778</caom2:cd21>
+                        <caom2:cd22>0.0008174874800280594</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
