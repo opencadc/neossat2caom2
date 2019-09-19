@@ -379,7 +379,8 @@ def _build_chunk_energy(chunk, headers):
         resolving_power = None
         wavelength = headers[0].get('WAVELENG')
         if wavelength is not None:
-            resolving_power = wavelength / (max_wl - min_wl)
+            wl = wavelength / 1e4  # everything in microns
+            resolving_power = wl / (max_wl - min_wl)
         energy = SpectralWCS(axis=axis,
                              specsys='TOPOCENT',
                              ssyssrc='TOPOCENT',

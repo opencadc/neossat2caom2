@@ -101,7 +101,7 @@
                     <caom2:ssysobs>TOPOCENT</caom2:ssysobs>
                     <caom2:ssyssrc>TOPOCENT</caom2:ssyssrc>
                     <caom2:bandpassName>CLEAR</caom2:bandpassName>
-                    <caom2:resolvingPower>12000.0</caom2:resolvingPower>
+                    <caom2:resolvingPower>1.2</caom2:resolvingPower>
                   </caom2:energy>
                   <caom2:time>
                     <caom2:axis>
@@ -210,7 +210,7 @@
                     <caom2:ssysobs>TOPOCENT</caom2:ssysobs>
                     <caom2:ssyssrc>TOPOCENT</caom2:ssyssrc>
                     <caom2:bandpassName>CLEAR</caom2:bandpassName>
-                    <caom2:resolvingPower>12000.0</caom2:resolvingPower>
+                    <caom2:resolvingPower>1.2</caom2:resolvingPower>
                   </caom2:energy>
                   <caom2:time>
                     <caom2:axis>
