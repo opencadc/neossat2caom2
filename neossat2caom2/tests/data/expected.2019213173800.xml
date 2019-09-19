@@ -98,7 +98,7 @@
       <caom2:productID>cor</caom2:productID>
       <caom2:metaRelease>2019-08-01T17:38:00.061</caom2:metaRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
-      <caom2:calibrationLevel>1</caom2:calibrationLevel>
+      <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
         <caom2:name>JNEOFITS 2.08</caom2:name>
         <caom2:producer>NEOSSat</caom2:producer>
@@ -181,7 +181,7 @@
       <caom2:productID>cord</caom2:productID>
       <caom2:metaRelease>2019-08-01T17:38:00.061</caom2:metaRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
-      <caom2:calibrationLevel>1</caom2:calibrationLevel>
+      <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
         <caom2:name>JNEOFITS 2.08</caom2:name>
         <caom2:producer>NEOSSat</caom2:producer>

@@ -76,6 +76,7 @@ import traceback
 
 from caom2 import Observation, CalibrationLevel, Axis, CoordAxis1D
 from caom2 import RefCoord, SpectralWCS, CoordRange1D, Chunk
+from caom2 import CoordFunction2D, Dimension2D, Coord2D
 from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
 from caom2utils import WcsParser
 from caom2pipe import astro_composable as ac
@@ -267,7 +268,7 @@ def accumulate_bp(bp, uri):
     bp.add_fits_attribute('Plane.metaRelease', 'DATE-OBS')
 
     bp.set('Plane.dataProductType', 'image')
-    if 'clean' in uri:
+    if 'clean' in uri or 'cor' in uri:
         cal_level = CalibrationLevel.CALIBRATED
     else:
         cal_level = CalibrationLevel.RAW_STANDARD
@@ -407,6 +408,12 @@ def _build_chunk_position(chunk, headers, obs_id):
     header['CRVAL2'] = get_dec(header)
     header['CRPIX1'] = get_position_axis_function_naxis1(header)
     header['CRPIX2'] = get_position_axis_function_naxis2(header)
+
+    wcs_parser = WcsParser(header, obs_id, 0)
+    if chunk is None:
+        chunk = Chunk()
+    wcs_parser.augment_position(chunk)
+
     x_binning = header.get('XBINNING')
     if x_binning is None:
         x_binning = 1.0
@@ -419,35 +426,13 @@ def _build_chunk_position(chunk, headers, obs_id):
     objct_rol = header.get('OBJCTROL')
     if objct_rol is None:
         objct_rol = 0.0
-    # header['CROTA2'] = 90.0 - objct_rol
-    # header['CROTA1'] = 0.0
-
-    # header['CD1_1'] = 0.00083333
-    # header['CD1_2'] = 0.0
-    # header['CD2_1'] = 0.0
-    # header['CD2_2'] = 0.00083333
-
-    wcs_parser = WcsParser(header, obs_id, 0)
-    if chunk is None:
-        chunk = Chunk()
-    wcs_parser.augment_position(chunk)
-
-    chunk.position_axis_1 = 1
-    chunk.position_axis_2 = 2
-
-    # for ii in wcs_parser.header:
-    #     logging.error('{:<8s} = {}'.format(ii, wcs_parser.header.get(ii)))
 
     crota2 = 90.0 - objct_rol
-    from astropy import units as u
-    crota2_rad = u.degree.to(u.radian, crota2)
     crota2_rad = math.radians(crota2)
     cd11 = cdelt1 * math.cos(crota2_rad)
     cd12 = abs(cdelt2) * _sign(cdelt1) * math.sin(crota2_rad)
     cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2_rad)
     cd22 = cdelt2 * math.cos(crota2_rad)
-
-    from caom2 import CoordFunction2D, Dimension2D, Coord2D
 
     dimension = Dimension2D(header.get('NAXIS1'),
                             header.get('NAXIS2'))
@@ -463,15 +448,15 @@ def _build_chunk_position(chunk, headers, obs_id):
                                cd21,
                                cd22)
     chunk.position.axis.function = function
-    logging.error(obs_id)
-    logging.error(chunk.position.axis.function)
+    chunk.position_axis_1 = 1
+    chunk.position_axis_2 = 2
 
 
 def _sign(value):
     return -1.0 if value < 0.0 else 1.0
 
 
-def _build_blueprints(uri):
+def _build_blueprints(uris):
     """This application relies on the caom2utils fits2caom2 ObsBlueprint
     definition for mapping FITS file values to CAOM model element
     attributes. This method builds the DRAO-ST blueprint for a single
@@ -482,20 +467,25 @@ def _build_blueprints(uri):
 
     :param uri The artifact URI for the file to be processed."""
     module = importlib.import_module(__name__)
-    blueprint = ObsBlueprint(module=module)
-    accumulate_bp(blueprint, uri)
-    blueprints = {uri: blueprint}
+    blueprints = {}
+    for uri in uris:
+        blueprint = ObsBlueprint(module=module)
+        if not ec.StorageName.is_preview(uri):
+            accumulate_bp(blueprint, uri)
+        blueprints[uri] = blueprint
     return blueprints
 
 
-def _get_uri(args):
+def _get_uris(args):
+    result = []
     if args.local:
-        obs_id = NEOSSatName.remove_extensions(os.path.basename(args.local[0]))
-        result = NEOSSatName(obs_id=obs_id).file_uri
-    elif args.observation:
-        result = NEOSSatName(obs_id=args.observation[1]).file_uri
+        for ii in args.local:
+            file_id = NEOSSatName.remove_extensions(os.path.basename(ii))
+            file_name = '{}.fits'.format(file_id)
+            result.append(NEOSSatName(file_name=file_name).file_uri)
     elif args.lineage:
-        result = args.lineage[0].split('/', 1)[1]
+        for ii in args.lineage:
+            result.append(ii.split('/', 1)[1])
     else:
         raise mc.CadcException(
             'Could not define uri from these args {}'.format(args))
@@ -504,13 +494,10 @@ def _get_uri(args):
 
 def neossat_main_app():
     args = get_gen_proc_arg_parser().parse_args()
-    logging.error('after args')
     try:
-        uri = _get_uri(args)
-        blueprints = _build_blueprints(uri)
-        logging.error('after buildprints')
+        uris = _get_uris(args)
+        blueprints = _build_blueprints(uris)
         gen_proc(args, blueprints)
-        logging.error('arfter genproc')
     except Exception as e:
         logging.error('Failed {} execution for {}.'.format(APPLICATION, args))
         tb = traceback.format_exc()
