@@ -89,7 +89,13 @@ LOOKUP = {'2019213173800': ['NEOS_SCI_2019213173800',
           '2019258000140': ['NEOS_SCI_2019258000140',
                             'NEOS_SCI_2019258000140_clean'],
           '2019259111450': ['NEOS_SCI_2019259111450',
-                            'NEOS_SCI_2019259111450_clean']}
+                            'NEOS_SCI_2019259111450_clean'],
+          '2019213174531': ['NEOS_SCI_2019213174531',
+                            'NEOS_SCI_2019213174531_cor',
+                            'NEOS_SCI_2019213174531_cord'],
+          '2019213215700': ['NEOS_SCI_2019213215700',
+                            'NEOS_SCI_2019213215700_cor',
+                            'NEOS_SCI_2019213215700_cord']}
 
 
 def pytest_generate_tests(metafunc):
@@ -97,10 +103,6 @@ def pytest_generate_tests(metafunc):
     for ii in LOOKUP:
         obs_id_list.append(ii)
     metafunc.parametrize('test_name', obs_id_list)
-    # if os.path.exists(TEST_DATA_DIR):
-    #     files = [os.path.join(TEST_DATA_DIR, name) for name in
-    #              os.listdir(TEST_DATA_DIR) if name.endswith('header')]
-    #     metafunc.parametrize('test_name', files)
 
 
 def test_main_app(test_name):
