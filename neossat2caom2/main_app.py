@@ -285,34 +285,6 @@ def accumulate_bp(bp, uri):
 
     bp.set_default('Artifact.releaseType', 'meta')
 
-    # bp.configure_position_axes((1, 2))
-    # bp.set('Chunk.position.axis.axis1.ctype', 'RA---TAN')
-    # bp.set('Chunk.position.axis.axis2.ctype', 'DEC--TAN')
-    # bp.set('Chunk.position.axis.axis1.cunit', 'deg')
-    # bp.set('Chunk.position.axis.axis2.cunit', 'deg')
-    # bp.set('Chunk.position.axis.function.dimension.naxis1',
-    #        'get_position_axis_function_naxis1(header)')
-    # bp.set('Chunk.position.axis.function.dimension.naxis2',
-    #        'get_position_axis_function_naxis2(header)')
-    # bp.clear('Chunk.position.axis.function.refCoord.coord1.pix')
-    # bp.add_fits_attribute(
-    #     'Chunk.position.axis.function.refCoord.coord1.pix',
-    #     'get_coord1_pix(header)')
-    # bp.clear('Chunk.position.axis.function.refCoord.coord1.val')
-    # bp.add_fits_attribute(
-    #     'Chunk.position.axis.function.refCoord.coord1.val', 'get_ra(header)')
-    # bp.clear('Chunk.position.axis.function.refCoord.coord2.pix')
-    # bp.add_fits_attribute(
-    #     'Chunk.position.axis.function.refCoord.coord2.pix',
-    #     'get_coord2_pix(header)')
-    # bp.clear('Chunk.position.axis.function.refCoord.coord2.val')
-    # bp.add_fits_attribute(
-    #     'Chunk.position.axis.function.refCoord.coord2.val', 'get_dec(header)')
-    # bp.set('Chunk.position.axis.function.cd11', 0.00083333)
-    # bp.set('Chunk.position.axis.function.cd12', 0.0)
-    # bp.set('Chunk.position.axis.function.cd21', 0.0)
-    # bp.set('Chunk.position.axis.function.cd22', 0.00083333)
-
     bp.configure_time_axis(3)
     bp.set('Chunk.time.axis.axis.ctype', 'TIME')
     bp.set('Chunk.time.axis.axis.cunit', 'd')
