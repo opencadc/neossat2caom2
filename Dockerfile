@@ -3,8 +3,10 @@ FROM opencadc/astropy:3.6-alpine
 WORKDIR /usr/src/app
 
 RUN apk --no-cache add bash \
-  git \
-  g++
+    git \
+    g++ \
+    imagemagick \
+    libmagic
 
 RUN pip install cadcdata && \
   pip install cadctap && \

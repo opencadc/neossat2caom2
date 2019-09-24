@@ -157,6 +157,13 @@ class NEOSSatName(ec.StorageName):
         return result
 
 
+def get_calibration_level(uri):
+    cal_level = CalibrationLevel.RAW_STANDARD
+    if 'clean' in uri or 'cor' in uri:
+        cal_level = CalibrationLevel.CALIBRATED
+    return cal_level
+
+
 def get_coord1_pix(header):
     ccdsec = header.get('CCDSEC')
     pix = ccdsec.split(',')[0].split(':')[1]
@@ -178,6 +185,13 @@ def get_obs_intent(header):
     result = header.get('INTENT')
     if result is not None:
         result = result.lower()
+    return result
+
+
+def get_plane_data_release(header):
+    result = header.get('RELEASE')
+    if result is None:
+        result = header.get('DATE-OBS')
     return result
 
 
@@ -226,8 +240,10 @@ def get_time_function_val(header):
 
 
 def _get_energy(header):
-    min_wl = None
-    max_wl = None
+    # DB 24-09-19
+    # if bandpass IS None: set min_wl to 0.4, max_wl to 0.9 (microns)
+    min_wl = 0.4
+    max_wl = 0.9
     # header units are Angstroms
     bandpass = header.get('BANDPASS')
     if bandpass is not None:
@@ -254,9 +270,16 @@ def accumulate_bp(bp, uri):
     logging.debug('Begin accumulate_bp.')
 
     bp.set('Observation.intent', 'get_obs_intent(header)')
+    # DB 24-09-19
+    # If OBSTYPE not in header, set target.type = ‘object’
+    bp.set_default('Observation.type', 'object')
 
     bp.clear('Observation.instrument.name')
     bp.add_fits_attribute('Observation.instrument.name', 'INSTRUME')
+    # DB 24-09-19
+    # If INSTRUME not in header, set Observation.instrument.name =
+    # ‘NEOSSat_Science’
+    bp.set_default('Observation.instrument.name', 'NEOSSat_Science')
 
     bp.set('Observation.target.type', 'get_target_type(header)')
     bp.set('Observation.target.moving', 'get_target_moving(header)')
@@ -266,13 +289,10 @@ def accumulate_bp(bp, uri):
 
     bp.clear('Plane.metaRelease')
     bp.add_fits_attribute('Plane.metaRelease', 'DATE-OBS')
+    bp.set('Plane.dataRelease', 'get_plane_data_release(header)')
 
     bp.set('Plane.dataProductType', 'image')
-    if 'clean' in uri or 'cor' in uri:
-        cal_level = CalibrationLevel.CALIBRATED
-    else:
-        cal_level = CalibrationLevel.RAW_STANDARD
-    bp.set('Plane.calibrationLevel', cal_level)
+    bp.set('Plane.calibrationLevel', 'get_calibration_level(uri)')
 
     bp.clear('Plane.provenance.name')
     bp.add_fits_attribute('Plane.provenance.name', 'CONV_SW')
@@ -346,13 +366,17 @@ def _build_chunk_energy(chunk, headers):
         ref_coord2 = RefCoord(1.5, max_wl)
         axis.range = CoordRange1D(ref_coord1, ref_coord2)
 
-        filter_name = headers[0].get('FILTER')
+        # DB 24-09-19
+        # If FILTER not in header, set filter_name = ‘CLEAR’
+        filter_name = headers[0].get('FILTER', 'CLEAR')
 
+        # DB 24-09-19
+        # if wavelength IS None, wl = 0.6 microns, and resolving_power is
+        # always determined.
         resolving_power = None
-        wavelength = headers[0].get('WAVELENG')
-        if wavelength is not None:
-            wl = wavelength / 1e4  # everything in microns
-            resolving_power = wl / (max_wl - min_wl)
+        wavelength = headers[0].get('WAVELENG', 6000)
+        wl = wavelength / 1e4  # everything in microns
+        resolving_power = wl / (max_wl - min_wl)
         energy = SpectralWCS(axis=axis,
                              specsys='TOPOCENT',
                              ssyssrc='TOPOCENT',

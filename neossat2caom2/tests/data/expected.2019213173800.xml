@@ -6,14 +6,19 @@
   <caom2:algorithm>
     <caom2:name>exposure</caom2:name>
   </caom2:algorithm>
+  <caom2:type>object</caom2:type>
   <caom2:intent>science</caom2:intent>
   <caom2:telescope>
     <caom2:name>NEOSSat</caom2:name>
   </caom2:telescope>
+  <caom2:instrument>
+    <caom2:name>NEOSSat_Science</caom2:name>
+  </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="f4a63b29-bba2-4118-b23a-e02abbb10057">
       <caom2:productID>raw</caom2:productID>
       <caom2:metaRelease>2019-08-01T17:38:00.061</caom2:metaRelease>
+      <caom2:dataRelease>2019-08-01T17:38:00.061</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
       <caom2:calibrationLevel>1</caom2:calibrationLevel>
       <caom2:provenance>
@@ -34,6 +39,7 @@
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
+                  <caom2:energyAxis>4</caom2:energyAxis>
                   <caom2:timeAxis>3</caom2:timeAxis>
                   <caom2:position>
                     <caom2:axis>
@@ -69,6 +75,29 @@
                     <caom2:coordsys>FK5</caom2:coordsys>
                     <caom2:equinox>2000.0</caom2:equinox>
                   </caom2:position>
+                  <caom2:energy>
+                    <caom2:axis>
+                      <caom2:axis>
+                        <caom2:ctype>WAVE</caom2:ctype>
+                        <caom2:cunit>um</caom2:cunit>
+                      </caom2:axis>
+                      <caom2:range>
+                        <caom2:start>
+                          <caom2:pix>0.5</caom2:pix>
+                          <caom2:val>0.4</caom2:val>
+                        </caom2:start>
+                        <caom2:end>
+                          <caom2:pix>1.5</caom2:pix>
+                          <caom2:val>0.9</caom2:val>
+                        </caom2:end>
+                      </caom2:range>
+                    </caom2:axis>
+                    <caom2:specsys>TOPOCENT</caom2:specsys>
+                    <caom2:ssysobs>TOPOCENT</caom2:ssysobs>
+                    <caom2:ssyssrc>TOPOCENT</caom2:ssyssrc>
+                    <caom2:bandpassName>CLEAR</caom2:bandpassName>
+                    <caom2:resolvingPower>1.2</caom2:resolvingPower>
+                  </caom2:energy>
                   <caom2:time>
                     <caom2:axis>
                       <caom2:axis>
@@ -97,6 +126,7 @@
     <caom2:plane caom2:id="786aa228-d56e-4c70-ab3f-47e617c2d2ea">
       <caom2:productID>cor</caom2:productID>
       <caom2:metaRelease>2019-08-01T17:38:00.061</caom2:metaRelease>
+      <caom2:dataRelease>2019-08-01T17:38:00.061</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
       <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
@@ -117,6 +147,7 @@
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
+                  <caom2:energyAxis>4</caom2:energyAxis>
                   <caom2:timeAxis>3</caom2:timeAxis>
                   <caom2:position>
                     <caom2:axis>
@@ -152,6 +183,29 @@
                     <caom2:coordsys>FK5</caom2:coordsys>
                     <caom2:equinox>2000.0</caom2:equinox>
                   </caom2:position>
+                  <caom2:energy>
+                    <caom2:axis>
+                      <caom2:axis>
+                        <caom2:ctype>WAVE</caom2:ctype>
+                        <caom2:cunit>um</caom2:cunit>
+                      </caom2:axis>
+                      <caom2:range>
+                        <caom2:start>
+                          <caom2:pix>0.5</caom2:pix>
+                          <caom2:val>0.4</caom2:val>
+                        </caom2:start>
+                        <caom2:end>
+                          <caom2:pix>1.5</caom2:pix>
+                          <caom2:val>0.9</caom2:val>
+                        </caom2:end>
+                      </caom2:range>
+                    </caom2:axis>
+                    <caom2:specsys>TOPOCENT</caom2:specsys>
+                    <caom2:ssysobs>TOPOCENT</caom2:ssysobs>
+                    <caom2:ssyssrc>TOPOCENT</caom2:ssyssrc>
+                    <caom2:bandpassName>CLEAR</caom2:bandpassName>
+                    <caom2:resolvingPower>1.2</caom2:resolvingPower>
+                  </caom2:energy>
                   <caom2:time>
                     <caom2:axis>
                       <caom2:axis>
@@ -180,6 +234,7 @@
     <caom2:plane caom2:id="64b399bc-3458-4437-b76c-a2b97af186c5">
       <caom2:productID>cord</caom2:productID>
       <caom2:metaRelease>2019-08-01T17:38:00.061</caom2:metaRelease>
+      <caom2:dataRelease>2019-08-01T17:38:00.061</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
       <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
@@ -200,6 +255,7 @@
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
+                  <caom2:energyAxis>4</caom2:energyAxis>
                   <caom2:timeAxis>3</caom2:timeAxis>
                   <caom2:position>
                     <caom2:axis>
@@ -235,6 +291,29 @@
                     <caom2:coordsys>FK5</caom2:coordsys>
                     <caom2:equinox>2000.0</caom2:equinox>
                   </caom2:position>
+                  <caom2:energy>
+                    <caom2:axis>
+                      <caom2:axis>
+                        <caom2:ctype>WAVE</caom2:ctype>
+                        <caom2:cunit>um</caom2:cunit>
+                      </caom2:axis>
+                      <caom2:range>
+                        <caom2:start>
+                          <caom2:pix>0.5</caom2:pix>
+                          <caom2:val>0.4</caom2:val>
+                        </caom2:start>
+                        <caom2:end>
+                          <caom2:pix>1.5</caom2:pix>
+                          <caom2:val>0.9</caom2:val>
+                        </caom2:end>
+                      </caom2:range>
+                    </caom2:axis>
+                    <caom2:specsys>TOPOCENT</caom2:specsys>
+                    <caom2:ssysobs>TOPOCENT</caom2:ssysobs>
+                    <caom2:ssyssrc>TOPOCENT</caom2:ssyssrc>
+                    <caom2:bandpassName>CLEAR</caom2:bandpassName>
+                    <caom2:resolvingPower>1.2</caom2:resolvingPower>
+                  </caom2:energy>
                   <caom2:time>
                     <caom2:axis>
                       <caom2:axis>

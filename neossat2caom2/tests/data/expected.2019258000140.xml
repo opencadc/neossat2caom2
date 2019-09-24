@@ -6,6 +6,7 @@
   <caom2:algorithm>
     <caom2:name>exposure</caom2:name>
   </caom2:algorithm>
+  <caom2:type>object</caom2:type>
   <caom2:intent>science</caom2:intent>
   <caom2:target>
     <caom2:name>CK19Q040</caom2:name>
@@ -22,6 +23,7 @@
     <caom2:plane caom2:id="f64502b0-c03d-4ceb-8480-c8d9b1f03287">
       <caom2:productID>raw</caom2:productID>
       <caom2:metaRelease>2019-09-15T00:01:40.462</caom2:metaRelease>
+      <caom2:dataRelease>2019-09-15T00:01:40.462</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
       <caom2:calibrationLevel>1</caom2:calibrationLevel>
       <caom2:provenance>
@@ -131,6 +133,7 @@
     <caom2:plane caom2:id="e320873e-5887-4e83-a3cc-d9c0a5fcdb7c">
       <caom2:productID>clean</caom2:productID>
       <caom2:metaRelease>2019-09-15T00:01:40.462</caom2:metaRelease>
+      <caom2:dataRelease>2019-09-15T00:01:40.462</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
       <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
