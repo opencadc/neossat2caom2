@@ -105,6 +105,9 @@ class NEOSSatName(ec.StorageName):
         if obs_id is not None:
             fname_on_disk = 'NEOS_SCI_{}.fits'.format(obs_id)
         elif file_name is not None:
+            if '/' in file_name:
+                self._ftp_fqn = file_name
+                file_name = os.path.basename(file_name)
             fname_on_disk = file_name
             obs_id = NEOSSatName.remove_extensions(
                 NEOSSatName.extract_obs_id(file_name))
@@ -113,6 +116,8 @@ class NEOSSatName(ec.StorageName):
         super(NEOSSatName, self).__init__(
             obs_id, COLLECTION, NEOSSatName.BLANK_NAME_PATTERN, fname_on_disk,
             archive=ARCHIVE)
+        logging.debug('obs id {} file name {}'.format(
+            self._obs_id, self._file_name))
 
     def is_valid(self):
         return True
@@ -303,7 +308,7 @@ def accumulate_bp(bp, uri):
     bp.clear('Plane.provenance.runID')
     bp.add_fits_attribute('Plane.provenance.runID', 'RUNID')
 
-    bp.set_default('Artifact.releaseType', 'meta')
+    bp.set_default('Artifact.releaseType', 'data')
 
     bp.configure_time_axis(3)
     bp.set('Chunk.time.axis.axis.ctype', 'TIME')

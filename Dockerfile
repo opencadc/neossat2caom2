@@ -11,6 +11,7 @@ RUN apk --no-cache add bash \
 RUN pip install cadcdata && \
   pip install cadctap && \
   pip install caom2repo && \
+  pip install ftputil && \
   pip install PyYAML && \
   pip install spherical-geometry && \
   pip install vos

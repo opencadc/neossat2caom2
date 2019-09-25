@@ -30,7 +30,7 @@
         <caom2:artifact caom2:id="ce58dca7-9452-4b54-8468-36907e764fa2">
           <caom2:uri>ad:NEOSS/NEOS_SCI_2019213174531.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
-          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
             <caom2:part caom2:id="94d5a0a7-dfb8-41f5-bdb5-2e15dac3e311">
@@ -138,7 +138,7 @@
         <caom2:artifact caom2:id="c5abbbf6-6055-408a-9406-c7a604ddbe30">
           <caom2:uri>ad:NEOSS/NEOS_SCI_2019213174531_cor.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
-          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
             <caom2:part caom2:id="57429884-74f0-499d-9a2f-287cd0481de1">
@@ -246,7 +246,7 @@
         <caom2:artifact caom2:id="26dcc3db-24c2-4991-a4c2-e0ad76558eb4">
           <caom2:uri>ad:NEOSS/NEOS_SCI_2019213174531_cord.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
-          <caom2:releaseType>meta</caom2:releaseType>
+          <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
             <caom2:part caom2:id="f6b331d8-634f-4672-a53c-06b8197d5903">
