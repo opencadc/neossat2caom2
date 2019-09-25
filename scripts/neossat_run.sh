@@ -4,7 +4,7 @@ echo "Get a proxy certificate"
 cp $HOME/.ssl/cadcproxy.pem ./ || exit $?
 
 COLLECTION="neossat"
-CONTAINER="bucket.canfar.net/${COLLECTION}"
+CONTAINER="bucket.canfar.net/${COLLECTION}2caom2"
 echo "Get the image ${CONTAINER}"
 docker pull ${CONTAINER} || exit $?
 
