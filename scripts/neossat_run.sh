@@ -3,10 +3,10 @@
 echo "Get a proxy certificate"
 cp $HOME/.ssl/cadcproxy.pem ./ || exit $?
 
-echo "Get the container"
-# docker pull bucket.canfar.net/neossat2caom2 || exit $?
 COLLECTION="neossat"
-CONTAINER="${COLLECTION}_run_int"
+CONTAINER="bucket.canfar.net/${COLLECTION}"
+echo "Get the image ${CONTAINER}"
+docker pull ${CONTAINER} || exit $?
 
 echo "Run container ${CONTAINER}"
 docker run --rm --name ${COLLECTION}_run -v ${PWD}:/usr/src/app/ ${CONTAINER} ${COLLECTION}_run || exit $?
