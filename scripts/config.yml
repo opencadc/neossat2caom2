@@ -5,12 +5,12 @@ proxy_file_name: /usr/src/app/cadcproxy.pem
 # operational value is ivo://cadc.nrc.ca/caom2repo
 resource_id: ivo://cadc.nrc.ca/sc2repo
 # operational value is ivo://cadc.nrc.ca/ams/neossat
-tap_id: ivo://cadc.nrc.ca/sc2tap
+# tap_id: ivo://cadc.nrc.ca/sc2tap
 todo_file_name: todo.txt
 # values True False
 use_local_files: False
 # values DEBUG INFO WARNING ERROR
-logging_level: DEBUG
+logging_level: INFO
 # values True False
 log_to_file: True
 # fully qualified name for a directory to write log files
@@ -61,6 +61,7 @@ source_host: ftp.asc-csa.gc.ca
 # - modify - create a footprint and previews for an existing CAOM model record
 # - pull - put a file retrieved from a URL
 task_types: 
+  - pull
   - ingest
   - modify
 features:

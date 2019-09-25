@@ -193,6 +193,15 @@ def get_obs_intent(header):
     return result
 
 
+def get_obs_type(header):
+    result = header.get('OBJECT')
+    if result is not None and result == 'DARK':
+        result = result.lower()
+    else:
+        result = 'object'
+    return result
+
+
 def get_plane_data_release(header):
     result = header.get('RELEASE')
     if result is None:
@@ -277,7 +286,8 @@ def accumulate_bp(bp, uri):
     bp.set('Observation.intent', 'get_obs_intent(header)')
     # DB 24-09-19
     # If OBSTYPE not in header, set target.type = ‘object’
-    bp.set_default('Observation.type', 'object')
+    # If observation is a 'DARK', set target.type = 'dark'
+    bp.set('Observation.type', 'get_obs_type(header)')
 
     bp.clear('Observation.instrument.name')
     bp.add_fits_attribute('Observation.instrument.name', 'INSTRUME')

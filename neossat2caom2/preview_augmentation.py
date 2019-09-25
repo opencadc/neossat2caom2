@@ -96,11 +96,14 @@ def visit(observation, **kwargs):
         observable = kwargs['observable']
     else:
         raise mc.CadcException('Visitor needs a observable parameter.')
+    science_file = None
+    if 'science_file' in kwargs:
+        science_file = kwargs.get('science_file')
 
     count = 0
     for plane in observation.planes.values():
         for artifact in plane.artifacts.values():
-            if artifact.uri.endswith('.fits'):
+            if artifact.uri.endswith(science_file):
                 count += _do_prev(artifact, plane, working_dir, cadc_client,
                                   stream, observable)
     logging.info('Completed preview augmentation for {}.'.format(
@@ -118,7 +121,6 @@ def _augment(plane, uri, fqn, product_type):
 
 
 def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
-             # ,file_id, science_fqn, working_dir, plane, cadc_client, metrics):
     naming = ec.CaomName(artifact.uri)
     preview = NEOSSatName(file_name=naming.file_name).prev
     preview_fqn = os.path.join(working_dir, preview)

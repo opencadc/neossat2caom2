@@ -95,7 +95,8 @@ LOOKUP = {'2019213173800': ['NEOS_SCI_2019213173800',
                             'NEOS_SCI_2019213174531_cord'],
           '2019213215700': ['NEOS_SCI_2019213215700',
                             'NEOS_SCI_2019213215700_cor',
-                            'NEOS_SCI_2019213215700_cord']}
+                            'NEOS_SCI_2019213215700_cord'],
+          '2019267234420': ['NEOS_SCI_2019267234420_clean']}
 
 
 def pytest_generate_tests(metafunc):
