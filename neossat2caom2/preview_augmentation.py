@@ -70,8 +70,6 @@
 import logging
 import os
 
-from datetime import datetime
-
 from caom2 import Observation, ReleaseType, ProductType
 from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc

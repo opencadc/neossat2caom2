@@ -270,7 +270,19 @@ def _get_energy(header):
 def _get_position(header):
     ra = header.get('RA')
     dec = header.get('DEC')
-    return ac.build_ra_dec_as_deg(ra, dec)
+    if ra is None and dec is None:
+        # DB 25-09-19
+        # Looking at other sample headers for a bunch of files OBJCTRA and
+        # OBJCTDEC are always the same as RA and DEC so use those if RA and/or
+        # DEC are missing  Note OBJCRA/OBJCTDEC do not have ‘:’ delimiters
+        # between hours(degrees)/minutes/seconds.
+        ra_temp = header.get('OBJCTRA')
+        dec_temp = header.get('OBJCTDEC')
+        ra = ra_temp.replace(' ', ':')
+        dec = dec_temp.replace(' ', ':')
+    if ra is not None and dec is not None:
+        ra, dec = ac.build_ra_dec_as_deg(ra, dec)
+    return ra, dec
 
 
 def accumulate_bp(bp, uri):
