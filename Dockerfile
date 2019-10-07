@@ -1,9 +1,8 @@
-FROM opencadc/astropy:3.6-alpine
+FROM opencadc/matplotlib:3.6-alpine
 
 RUN apk --no-cache add bash \
     git \
     g++ \
-    imagemagick \
     libmagic
 
 RUN pip install cadcdata && \
