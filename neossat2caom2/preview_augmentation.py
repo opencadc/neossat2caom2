@@ -104,10 +104,17 @@ def visit(observation, **kwargs):
 
     count = 0
     for plane in observation.planes.values():
+        delete_list = []
         for artifact in plane.artifacts.values():
             if artifact.uri.endswith(science_file):
                 count += _do_prev(artifact, plane, working_dir, cadc_client,
                                   stream, observable)
+            if artifact.uri.endswith('.jpg'):
+                delete_list.append(artifact.uri)
+
+        for uri in delete_list:
+            plane.artifacts.pop(uri)
+
     logging.info('Completed preview augmentation for {}.'.format(
         observation.observation_id))
     return {'artifacts': count}
