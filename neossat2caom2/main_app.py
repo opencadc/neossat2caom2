@@ -136,6 +136,16 @@ class NEOSSatName(ec.StorageName):
         """The ad URI for the file. Assumes compression."""
         return '{}:{}/{}'.format(self.scheme, self.archive, self.file_name)
 
+    @property
+    def prev(self):
+        """The preview file name for the file."""
+        return '{}_{}_prev.png'.format(self.obs_id, self._product_id)
+
+    @property
+    def thumb(self):
+        """The thumbnail file name for the file."""
+        return '{}_{}_prev_256.png'.format(self.obs_id, self._product_id)
+
     @staticmethod
     def remove_extensions(value):
         return value.replace('.fits', '').replace('.header', '')
@@ -160,6 +170,10 @@ class NEOSSatName(ec.StorageName):
         elif '_clean' in value:
             result = 'clean'
         return result
+
+    @staticmethod
+    def is_preview(entry):
+        return '.png' in entry
 
 
 def get_calibration_level(uri):

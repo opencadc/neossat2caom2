@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -74,6 +74,9 @@ import traceback
 from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import APPLICATION, NEOSSatName, preview_augmentation
+from neossat2caom2 import work
+
+NEOS_BOOKMARK = 'neossat_timestamp'
 
 meta_visitors = []
 data_visitors = [preview_augmentation]
@@ -105,13 +108,21 @@ def run():
 
 
 def _run_state():
-    """Uses a state file with a timestamp to control which entries will be
-    processed.
+    """Uses a state file with a timestamp to control which files will be
+    retrieved from the CSA ftp host.
+
+    Ingestion is based on fully-qualified file names from the CSA ftp host,
+    because those are difficult to reproduce otherwise.
     """
     config = mc.Config()
     config.get_executors()
+    state = mc.State(config.state_fqn)
+    start_time = state.get_bookmark(NEOS_BOOKMARK)
+    logging.error('config.state_fqn {}'.format(config.state_fqn))
+    logging.error('start time is {}'.format(start_time))
+    state_work = work.CsaPageScrape(start_time)
     return ec.run_from_state(config, NEOSSatName, APPLICATION, meta_visitors,
-                             data_visitors, bookmark=None, work=None)
+                             data_visitors, NEOS_BOOKMARK, state_work)
 
 
 def run_state():

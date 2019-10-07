@@ -68,104 +68,76 @@
 #
 
 import logging
-import traceback
+import stat
 
-from ftplib import FTP
+from ftputil import FTPHost
+
 from caom2pipe import manage_composable as mc
 
-__all__ = ['build_todo', 'set_start_time']
+__all__ = ['build_todo']
 
 ASC_FTP_SITE = 'ftp.asc-csa.gc.ca'
-NEOS_DIR = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/'
-
-
-ftp = None
-start_time = None
-result = {}
-sub_dir = None
-
-
-def get_start_time():
-    global start_time
-    return start_time
-
-
-def set_start_time(to_time):
-    global start_time
-    start_time = to_time
-
-
-def _parse_retln(ftp_line):
-    temp = ftp_line.split()
-    dir_name = temp[-1].strip()
-    dir_time = '{} {} {}'.format(temp[5], temp[6], temp[7])
-    dir_timestamp = mc.make_seconds(dir_time)
-    return dir_name, dir_timestamp
-
-
-def _parse_line(ftp_line):
-    global sub_dir
-    global ftp
-    global result
-    if ftp_line.startswith('d') and not ftp_line.endswith('.'):
-        dir_name, dir_timestamp = _parse_retln(ftp_line)
-        if dir_timestamp >= get_start_time():
-            sub_dir = '{}/{}'.format(sub_dir, dir_name)
-            logging.info('Checking {} for new files.'.format(sub_dir))
-            ftp.cwd(sub_dir)
-            # ftp.retrlines('LIST', callback=_parse_line)
-            # return
-    elif ftp_line.startswith('-r') and ftp_line.endswith('.fits'):
-        f_name, f_timestamp = _parse_retln(ftp_line)
-        if f_timestamp >= get_start_time():
-            f_dir = '{}/{}'.format(sub_dir, f_name)
-            result[f_dir] = f_timestamp
-            logging.debug('Found {} at time {}'.format(f_dir, f_timestamp))
+NEOS_DIR = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO'
 
 
 def _build_todo(start_date, ftp_site, ftp_dir):
-    """
-    Build a list of URLs where the timestamp is >= start_time. This function
-    exists to support testing.
+    """Recursively visit directories at the ftp site, looking for .fits
+    files. If the file modification time is >= start_date, that file
+    is a candidate for transfer.
 
-    :param start_date timestamp in seconds since the epoch
-    :return a dict, where keys are URLs, and values are timestamps
-    """
-    global start_time
-    global ftp
-    global sub_dir
-    start_time = start_date
-    max_date = get_start_time()
-
-    logging.debug('Begin build_todo with date {}'.format(get_start_time()))
+    :return a dict, where keys are the fully-qualified file names on the
+        ftp host server, and the values timestamps"""
+    listing = {}
     try:
-        ftp = FTP(ftp_site)
-        ftp.login()  # anonymous
-        sub_dir = ftp_dir
-        ftp.cwd(sub_dir)
-        ftp.retrlines('LIST', callback=_parse_line)
+        with FTPHost(ftp_site, 'anonymous', '@anonymous') as ftp_host:
+            dirs = ftp_host.listdir(ftp_dir)
+            for entry in dirs:
+                entry_fqn = '{}/{}'.format(ftp_dir, entry)
+                entry_stats = ftp_host.stat(entry_fqn)
+                if entry_stats.st_mtime >= start_date:
+                    if stat.S_ISDIR(entry_stats.st_mode):
+                        # True - it's a directory, follow it down later
+                        listing[entry_fqn] = [True, entry_stats.st_mtime]
+                    elif entry.endswith('.fits'):
+                        # False - it's a file, just leave it in the list
+                        listing[entry_fqn] = [False, entry_stats.st_mtime]
+                        logging.info('Adding entry {}'.format(entry_fqn))
+            ftp_host.close()
+
+        temp_listing = {}
+        for entry, value in listing.items():
+            if value[0]:  # is a directory
+                logging.info('Adding results for {}'.format(entry))
+                temp_listing.update(_build_todo(start_date, ftp_site, entry))
+
+        listing.update(temp_listing)
+
     except Exception as e:
-        logging.error(
-            'Failed ftp connection to {} with {}'.format(ASC_FTP_SITE, e))
-        logging.debug(traceback.format_exc())
-        raise e  # TODO
-    finally:
-        if ftp is not None:
-            ftp.close()
-    logging.debug('End build_todo with {} records, date {}'.format(
-        len(result), max_date))
-    return result, max_date
+        logging.error(e)
+        raise mc.CadcException('Could not list {} on {}'.format(
+            ftp_dir, ftp_site))
+    return listing
 
 
 def build_todo(start_date):
     """
-    Build a list of URLs where the timestamp is >= start_time
+    Build a list of file names where the modification time for the file
+    is >= start_time.
 
     :param start_date timestamp in seconds since the epoch
-    :return a dict, where keys are URLs, and values are timestamps
+    :return a dict, where keys are file names on the ftp host server, and
+        values are timestamps, plus the max timestamp from the ftp host
+        server for file addition
     """
-    logging.debug('Begin build_todo with date {}'.format(get_start_time()))
-    todo_list, max_date = _build_todo(start_date, ASC_FTP_SITE, NEOS_DIR)
-    logging.debug('End build_todo with {} records, date {}'.format(
-        len(todo_list), max_date))
+    logging.debug('Begin build_todo with date {}'.format(start_date))
+    max_date = start_date
+    todo_list = {}
+    temp = _build_todo(start_date, ASC_FTP_SITE, NEOS_DIR)
+    # remove the directory names from the traversal
+    for entry, value in temp.items():
+        if not value[0]:
+            todo_list[entry] = value[1]
+            max_date = max(max_date, value[1])
+    logging.info('End build_todo with {} records, date {} type {}'.format(
+        len(todo_list), max_date, type(max_date)))
     return todo_list, max_date

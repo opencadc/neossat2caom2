@@ -66,21 +66,30 @@
 #
 # ***********************************************************************
 #
-from neossat2caom2 import NEOSSatName
 
+from caom2pipe import manage_composable as mc
+from neossat2caom2 import scrape
 
-def test_is_valid():
-    assert NEOSSatName('anything').is_valid()
+import logging
 
+class CsaPageScrape(mc.Work):
+    """Put the CSA page scraping behind the API for state file-based
+    CAOM record creation.
+    """
 
-def test_storage_name():
-    for f_name in ['NEOS_SCI_2019213173800_cord.fits',
-                   'NEOS_SCI_2019213173800_cor.fits',
-                   'NEOS_SCI_2019213173800.fits']:
-        test_sub = NEOSSatName(file_name=f_name)
-        assert test_sub.obs_id == '2019213173800'
+    def __init__(self, from_time):
+        # make a string into a datetime value
+        temp = mc.increment_time(from_time, 0)
+        self.todo_list, max_date = scrape.build_todo(temp)
+        logging.error('work max date {} type {}'.format(max_date, type(max_date)))
+        super(CsaPageScrape, self).__init__(max_date)
 
-        if f_name == 'NEOS_SCI_2019213173800_cord.fits':
-            assert test_sub.prev_uri == 'ad:NEOSS/2019213173800_cord_prev.png'
-            assert test_sub.thumb_uri == \
-                'ad:NEOSS/2019213173800_cord_prev_256.png'
+    def todo(self, prev_exec_date, exec_date):
+        """Time-boxing the file list returned from the site scrape."""
+        temp = []
+        prev_ts = prev_exec_date.timestamp()
+        exec_ts = exec_date.timestamp()
+        for entry, timestamp in self.todo_list.items():
+            if prev_ts < timestamp <= exec_ts:
+                temp += entry
+        return list(set(temp))

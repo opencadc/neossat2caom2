@@ -66,21 +66,69 @@
 #
 # ***********************************************************************
 #
-from neossat2caom2 import NEOSSatName
+import os
+import pytest
+
+from mock import patch
+
+from caom2 import ChecksumURI
+from neossat2caom2 import preview_augmentation, NEOSSatName
+from caom2pipe import manage_composable as mc
 
 
-def test_is_valid():
-    assert NEOSSatName('anything').is_valid()
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
+TEST_OBS = '2019213215700'
+TEST_FILES = ['NEOS_SCI_2019213215700.fits',
+              'NEOS_SCI_2019213215700_cor.fits',
+              'NEOS_SCI_2019213215700_cord.fits']
 
 
-def test_storage_name():
-    for f_name in ['NEOS_SCI_2019213173800_cord.fits',
-                   'NEOS_SCI_2019213173800_cor.fits',
-                   'NEOS_SCI_2019213173800.fits']:
-        test_sub = NEOSSatName(file_name=f_name)
-        assert test_sub.obs_id == '2019213173800'
+def test_preview_aug_visit():
+    with pytest.raises(mc.CadcException):
+        preview_augmentation.visit(None)
 
-        if f_name == 'NEOS_SCI_2019213173800_cord.fits':
-            assert test_sub.prev_uri == 'ad:NEOSS/2019213173800_cord_prev.png'
-            assert test_sub.thumb_uri == \
-                'ad:NEOSS/2019213173800_cord_prev_256.png'
+
+def test_preview_augment_plane():
+    for f_name in TEST_FILES:
+        neoss_name = NEOSSatName(file_name=f_name)
+        preview = os.path.join(TEST_DATA_DIR, neoss_name.prev)
+        thumb = os.path.join(TEST_DATA_DIR, neoss_name.thumb)
+        if os.path.exists(preview):
+            os.remove(preview)
+        if os.path.exists(thumb):
+            os.remove(thumb)
+        test_fqn = os.path.join(TEST_DATA_DIR, '{}.fits.xml'.format(TEST_OBS))
+        test_obs = mc.read_obs_from_file(test_fqn)
+        assert len(test_obs.planes[neoss_name.product_id].artifacts) == 1
+
+        test_config = mc.Config()
+        test_config.observe_execution = True
+        test_metrics = mc.Metrics(test_config)
+        test_observable = mc.Observable(rejected=None,
+                                        metrics=test_metrics)
+
+        test_kwargs = {'working_directory': TEST_DATA_DIR,
+                       'cadc_client': None,
+                       'observable': test_observable,
+                       'stream': test_config.stream,
+                       'science_file': f_name}
+        with patch('neossat2caom2.preview_augmentation._store_smalls'):
+            test_result = preview_augmentation.visit(test_obs, **test_kwargs)
+            assert test_result is not None, 'expected a visit return value'
+            assert test_result['artifacts'] == 2
+            assert len(test_obs.planes[neoss_name.product_id].artifacts) == 3
+
+            if f_name == 'NEOS_SCI_2019213215700.fits':
+                preva = 'ad:NEOSS/2019213215700_raw_prev.png'
+                thumba = 'ad:NEOSS/2019213215700_raw_prev_256.png'
+                assert os.path.exists(preview)
+                assert os.path.exists(thumb)
+                assert test_obs.planes[neoss_name.product_id].\
+                    artifacts[preva].content_checksum == \
+                    ChecksumURI('md5:cbd42f0751d412799a64cfc5792bf08d'), \
+                    'prev checksum failure'
+                assert test_obs.planes[neoss_name.product_id].\
+                    artifacts[thumba].content_checksum == \
+                    ChecksumURI('md5:fcfee77f6dcd56f1b1fc3c91450b7393'), \
+                    'thumb checksum failure'

@@ -70,6 +70,10 @@
 import logging
 import os
 
+from astropy.io import fits
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+
 from caom2 import Observation, ReleaseType, ProductType
 from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
@@ -120,26 +124,19 @@ def _augment(plane, uri, fqn, product_type):
 
 def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
     naming = ec.CaomName(artifact.uri)
-    preview = NEOSSatName(file_name=naming.file_name).prev
+    neoss_name = NEOSSatName(file_name=naming.file_name)
+    preview = neoss_name.prev
     preview_fqn = os.path.join(working_dir, preview)
-    thumb = NEOSSatName(file_name=naming.file_name).thumb
+    thumb = neoss_name.thumb
     thumb_fqn = os.path.join(working_dir, thumb)
     science_fqn = os.path.join(working_dir, naming.file_name)
 
-    if os.access(preview_fqn, 0):
-        os.remove(preview_fqn)
-    prev_convert_cmd = 'convert -resize 1024x1024 -normalize -negate {} {}'.format(
-            science_fqn, preview_fqn)
-    mc.exec_cmd(prev_convert_cmd)
+    image_data = fits.getdata(science_fqn, ext=0)
+    _generate_plot(preview_fqn, 1024, image_data)
+    _generate_plot(thumb_fqn, 256, image_data)
 
-    if os.access(thumb_fqn, 0):
-        os.remove(thumb_fqn)
-    thumb_convert_cmd = 'convert -resize 256x256 -normalize -negate {} {}'.format(
-        science_fqn, thumb_fqn)
-    mc.exec_cmd(thumb_convert_cmd)
-
-    prev_uri = NEOSSatName(file_name=naming.file_name).prev_uri
-    thumb_uri = NEOSSatName(file_name=naming.file_name).thumb_uri
+    prev_uri = neoss_name.prev_uri
+    thumb_uri = neoss_name.thumb_uri
     _store_smalls(cadc_client, working_dir, preview, thumb,
                   observable.metrics, stream)
     _augment(plane, prev_uri, preview_fqn, ProductType.PREVIEW)
@@ -150,6 +147,19 @@ def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
 def _store_smalls(cadc_client, working_directory, preview_fname,
                   thumb_fname, metrics, stream):
     mc.data_put(cadc_client, working_directory, preview_fname, ARCHIVE,
-                stream, mime_type='image/jpeg', metrics=metrics)
+                stream, mime_type='image/png', metrics=metrics)
     mc.data_put(cadc_client, working_directory, thumb_fname, ARCHIVE, stream,
-                mime_type='image/jpeg', metrics=metrics)
+                mime_type='image/png', metrics=metrics)
+
+
+def _generate_plot(fqn, dpi_factor, image_data):
+    # DB 07-10-19
+    fig = plt.figure()
+    dpi = fig.get_dpi()
+    fig.set_size_inches(dpi_factor/dpi, dpi_factor/dpi)
+    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
+    plt.imshow(image_data, cmap='gray_r', norm=colors.LogNorm())
+    plt.axis('off')
+    if os.access(fqn, 0):
+        os.remove(fqn)
+    plt.savefig(fqn, format='png')
