@@ -5,6 +5,11 @@ An application to generate CAOM2 Observations from NEOSSat FITS files.
 
 In an empty directory (the 'working directory'), on a machine with Docker installed:
 
+1. If running at CADC, ensure the group 'docker' has write and execute permissions on the empty directory:
+    ```
+    chmod 777 <empty dir>
+    ```
+
 1. On the machine with Docker installed, one time only, log in to the registry:
 
     ```
