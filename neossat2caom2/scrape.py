@@ -147,7 +147,6 @@ def build_todo(start_date):
     """
     logging.debug('Begin build_todo with date {}'.format(start_date))
     temp = _build_todo(start_date, ASC_FTP_SITE, NEOS_DIR)
-    logging.error('temp is {}'.format(temp))
     todo_list, max_date = _remove_dir_names(temp, start_date)
     logging.info('End build_todo with {} records, date {}.'.format(
         len(todo_list), max_date))

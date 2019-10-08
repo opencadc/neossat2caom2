@@ -69,6 +69,7 @@
 
 import logging
 import os
+import re
 
 from astropy.io import fits
 import matplotlib.pyplot as plt
@@ -139,8 +140,10 @@ def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
     science_fqn = os.path.join(working_dir, naming.file_name)
 
     image_data = fits.getdata(science_fqn, ext=0)
-    _generate_plot(preview_fqn, 1024, image_data)
-    _generate_plot(thumb_fqn, 256, image_data)
+    image_header = fits.getheader(science_fqn, ext=0)
+
+    _generate_plot(preview_fqn, 1024, image_data, image_header)
+    _generate_plot(thumb_fqn, 256, image_data, image_header)
 
     prev_uri = neoss_name.prev_uri
     thumb_uri = neoss_name.thumb_uri
@@ -159,13 +162,32 @@ def _store_smalls(cadc_client, working_directory, preview_fname,
                 mime_type='image/png', metrics=metrics)
 
 
-def _generate_plot(fqn, dpi_factor, image_data):
+def _generate_plot(fqn, dpi_factor, image_data, image_header):
     # DB 07-10-19
     fig = plt.figure()
     dpi = fig.get_dpi()
     fig.set_size_inches(dpi_factor/dpi, dpi_factor/dpi)
     plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
-    plt.imshow(image_data, cmap='gray_r', norm=colors.LogNorm())
+
+    # DB 08-10-19
+    naxis1 = image_header.get('NAXIS1')
+    naxis2 = image_header.get('NAXIS2')
+    datasec = image_header.get('DATASEC')
+    dsl = list(map(
+        int, re.split('\\[(\\d+):(\\d+),(\\d+):(\\d+)\\]', datasec)[1:5]))
+    if (naxis1 < dsl[0] or dsl[1] > naxis1 or
+            naxis2 < dsl[2] or dsl[3] > naxis2):
+        xstart = ystart = 0
+        xend = yend = naxis1
+    else:
+        xstart = dsl[0] - 1
+        xend = dsl[1]
+        ystart = dsl[2] - 1
+        yend = dsl[3]
+
+    plt.imshow(image_data[ystart:yend, xstart:xend],
+               cmap='gray_r',
+               norm=colors.LogNorm())
     plt.axis('off')
     if os.access(fqn, 0):
         os.remove(fqn)
