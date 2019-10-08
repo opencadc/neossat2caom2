@@ -70,7 +70,6 @@
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import scrape
 
-import logging
 
 class CsaPageScrape(mc.Work):
     """Put the CSA page scraping behind the API for state file-based
@@ -78,18 +77,23 @@ class CsaPageScrape(mc.Work):
     """
 
     def __init__(self, from_time):
-        # make a string into a datetime value
-        temp = mc.increment_time(from_time, 0)
+        # make a string into a datetime value, but the input to the
+        # build_todo method is a timestamp
+        temp = mc.increment_time(from_time, 0).timestamp()
         self.todo_list, max_date = scrape.build_todo(temp)
-        logging.error('work max date {} type {}'.format(max_date, type(max_date)))
         super(CsaPageScrape, self).__init__(max_date)
 
+    def initialize(self):
+        pass
+
     def todo(self, prev_exec_date, exec_date):
-        """Time-boxing the file list returned from the site scrape."""
+        """Time-boxing the file list returned from the site scrape, where the
+        list is a dict, with keys the entries to retrieve, and values are the
+        timestamp associated with the respective entry."""
         temp = []
         prev_ts = prev_exec_date.timestamp()
         exec_ts = exec_date.timestamp()
         for entry, timestamp in self.todo_list.items():
             if prev_ts < timestamp <= exec_ts:
-                temp += entry
+                temp.append(entry)
         return list(set(temp))

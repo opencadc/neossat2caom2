@@ -69,6 +69,7 @@
 
 import logging
 import stat
+import traceback
 
 from ftputil import FTPHost
 
@@ -114,9 +115,24 @@ def _build_todo(start_date, ftp_site, ftp_dir):
 
     except Exception as e:
         logging.error(e)
+        logging.debug(traceback.format_exc())
         raise mc.CadcException('Could not list {} on {}'.format(
             ftp_dir, ftp_site))
     return listing
+
+
+def _remove_dir_names(item_list, start_date):
+    """The listing that comes back from _build_todo contains directory
+    names. This function removes the directory names from the list,
+    using the boolean value set in the listing by the _build_todo
+    function."""
+    max_date = start_date
+    todo_list = {}
+    for entry, value in item_list.items():
+        if not value[0]:
+            todo_list[entry] = value[1]
+            max_date = max(max_date, value[1])
+    return todo_list, max_date
 
 
 def build_todo(start_date):
@@ -130,14 +146,9 @@ def build_todo(start_date):
         server for file addition
     """
     logging.debug('Begin build_todo with date {}'.format(start_date))
-    max_date = start_date
-    todo_list = {}
     temp = _build_todo(start_date, ASC_FTP_SITE, NEOS_DIR)
-    # remove the directory names from the traversal
-    for entry, value in temp.items():
-        if not value[0]:
-            todo_list[entry] = value[1]
-            max_date = max(max_date, value[1])
-    logging.info('End build_todo with {} records, date {} type {}'.format(
-        len(todo_list), max_date, type(max_date)))
+    logging.error('temp is {}'.format(temp))
+    todo_list, max_date = _remove_dir_names(temp, start_date)
+    logging.info('End build_todo with {} records, date {}.'.format(
+        len(todo_list), max_date))
     return todo_list, max_date

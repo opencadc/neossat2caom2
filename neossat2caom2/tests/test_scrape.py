@@ -67,28 +67,99 @@
 # ***********************************************************************
 #
 
+import os
+import stat
+
+from mock import patch, Mock
+
 from neossat2caom2 import scrape
 
+TEST_DIRS = [
+    '/tmp/astro',
+    '/tmp/astro/2017',
+    '/tmp/astro/2018',
+    '/tmp/astro/2019',
+    '/tmp/astro/2017/125',
+    '/tmp/astro/2017/127',
+    '/tmp/astro/2017/125/dark',
+    '/tmp/astro/2017/125/dark/fine_point',
+    '/tmp/astro/2017/125/m31',
+    '/tmp/astro/2017/125/m31/reacquire',
+]
 
-def test_parse_retln():
-    scrape.set_start_time(757555100.0)
-    result_dir, result_time = scrape._parse_retln(
-        'drwxr-xr-x   2 root     wheel        1024 Jan  3  1994 etc')
-    assert result_dir is not None, 'expected dir'
-    assert result_time is not None, 'expected time'
-    assert result_dir == 'etc', 'wrong directory'
-    assert result_time == 757555200.0, 'wrong time'
-
-    result_dir, result_time = scrape._parse_retln(
-        '-rw-r--r--   1 root     root          312 Aug  1  1994 welcome.msg')
-    assert result_dir is not None, 'expected file'
-    assert result_time is not None, 'expected file time'
-    assert result_dir == 'welcome.msg', 'wrong file'
-    assert result_time == 775699200.0, 'wrong file time'
+TEST_END_TIME = 15704859000
 
 
-def test_build_todo():
-    test_result, test_max_date = scrape._build_todo(
-        775699200.0, 'localhost', '/tmp')
+@patch('neossat2caom2.scrape.FTPHost')
+def test_build_todo(ftp_mock):
+    _make_test_dirs()
+    ftp_mock.return_value.__enter__.return_value.listdir.\
+        side_effect = _list_dirs
+    ftp_mock.return_value.__enter__.return_value.stat. \
+        side_effect = _entry_stats
+    test_start = TEST_END_TIME - 1000
+    test_result = scrape._build_todo(test_start, 'localhost', '/tmp/astro')
     assert test_result is not None, 'expected result'
-    assert test_max_date is not None, 'expected date'
+    assert len(test_result) == 14, 'wrong length of all the entries'
+    test_todo_list, test_max = scrape._remove_dir_names(test_result, test_start)
+    assert test_todo_list is not None, 'expect a todo list'
+    assert test_max is not None, 'expect a max time'
+    assert test_max == TEST_END_TIME, 'wrong max time'
+    assert len(test_todo_list) == 5, 'wrong length of file entries'
+    assert '/tmp/astro/2017/125/dark/fine_point/a.fits' in test_todo_list, \
+        'missing leafiest entry'
+    assert '/tmp/astro/2017/127/e.fits' in test_todo_list, \
+        'missing less leafy entry'
+
+
+class StatMock(object):
+    def __init__(self, mtime, mode):
+        self.st_mtime = mtime
+        self.st_mode = mode
+
+
+def _entry_stats(fqn):
+    dir_mode = stat.S_IFDIR
+    file_mode = stat.S_IFREG
+    if fqn in TEST_DIRS:
+        result = StatMock(mtime=TEST_END_TIME, mode=dir_mode)
+    else:
+        result = StatMock(mtime=TEST_END_TIME, mode=file_mode)
+    return result
+
+
+def _list_dirs(dir_name):
+    if dir_name == '/tmp/astro':
+        return ['2017', '2018', '2019']
+    elif dir_name == '/tmp/astro/2017':
+        return ['125', '127']
+    elif dir_name == '/tmp/astro/2017/125':
+        return ['dark', 'm31']
+    elif dir_name == '/tmp/astro/2017/125/dark':
+        return ['fine_point']
+    elif dir_name == '/tmp/astro/2017/125/m31':
+        return ['reacquire']
+    elif dir_name == '/tmp/astro/2017/125/dark/fine_point':
+        return ['a.fits', 'b.fits']
+    elif dir_name == '/tmp/astro/2017/125/m31/reacquire':
+        return ['c.fits', 'd.fits']
+    elif dir_name == '/tmp/astro/2017/127':
+        return ['e.fits']
+    else:
+        return []
+
+
+def _make_test_dirs():
+    if not os.path.exists('/tmp/astro'):
+        for dir_name in TEST_DIRS:
+            os.mkdir(dir_name)
+        with open('/tmp/astro/2017/125/dark/fine_point/a.fits', 'w') as f:
+            f.write('abc')
+        with open('/tmp/astro/2017/125/dark/fine_point/b.fits', 'w') as f:
+            f.write('abc')
+        with open('/tmp/astro/2017/125/m31/reacquire/c.fits', 'w') as f:
+            f.write('abc')
+        with open('/tmp/astro/2017/125/m31/reacquire/d.fits', 'w') as f:
+            f.write('abc')
+        with open('/tmp/astro/2017/127/e.fits', 'w') as f:
+            f.write('abc')
