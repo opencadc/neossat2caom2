@@ -192,3 +192,4 @@ def _generate_plot(fqn, dpi_factor, image_data, image_header):
     if os.access(fqn, 0):
         os.remove(fqn)
     plt.savefig(fqn, format='png')
+    plt.close()

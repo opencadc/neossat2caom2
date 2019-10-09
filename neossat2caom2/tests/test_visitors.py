@@ -126,9 +126,9 @@ def test_preview_augment_plane():
                 assert os.path.exists(thumb)
                 assert test_obs.planes[neoss_name.product_id].\
                     artifacts[preva].content_checksum == \
-                    ChecksumURI('md5:cbd42f0751d412799a64cfc5792bf08d'), \
+                    ChecksumURI('md5:15828d4014363f0d615d168c75f30003'), \
                     'prev checksum failure'
                 assert test_obs.planes[neoss_name.product_id].\
                     artifacts[thumba].content_checksum == \
-                    ChecksumURI('md5:fcfee77f6dcd56f1b1fc3c91450b7393'), \
+                    ChecksumURI('md5:20198c5ccc5a477bd77fbbbb2890a8cd'), \
                     'thumb checksum failure'
