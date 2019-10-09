@@ -173,17 +173,24 @@ def _generate_plot(fqn, dpi_factor, image_data, image_header):
     naxis1 = image_header.get('NAXIS1')
     naxis2 = image_header.get('NAXIS2')
     datasec = image_header.get('DATASEC')
-    dsl = list(map(
-        int, re.split('\\[(\\d+):(\\d+),(\\d+):(\\d+)\\]', datasec)[1:5]))
-    if (naxis1 < dsl[0] or dsl[1] > naxis1 or
-            naxis2 < dsl[2] or dsl[3] > naxis2):
+    if datasec is None:
         xstart = ystart = 0
-        xend = yend = naxis1
+        xend = naxis1
+        yend = naxis2
     else:
-        xstart = dsl[0] - 1
-        xend = dsl[1]
-        ystart = dsl[2] - 1
-        yend = dsl[3]
+        logging.error('datasec is {}'.format(datasec))
+        dsl = list(map(
+            int, re.split('\\[(\\d+):(\\d+),(\\d+):(\\d+)\\]', datasec)[1:5]))
+        if (naxis1 < dsl[0] or dsl[1] > naxis1 or
+                naxis2 < dsl[2] or dsl[3] > naxis2):
+            xstart = ystart = 0
+            xend = naxis1
+            yend = naxis2
+        else:
+            xstart = dsl[0] - 1
+            xend = dsl[1]
+            ystart = dsl[2] - 1
+            yend = dsl[3]
 
     plt.imshow(image_data[ystart:yend, xstart:xend],
                cmap='gray_r',
