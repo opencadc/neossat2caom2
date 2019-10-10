@@ -178,7 +178,6 @@ def _generate_plot(fqn, dpi_factor, image_data, image_header):
         xend = naxis1
         yend = naxis2
     else:
-        logging.error('datasec is {}'.format(datasec))
         dsl = list(map(
             int, re.split('\\[(\\d+):(\\d+),(\\d+):(\\d+)\\]', datasec)[1:5]))
         if (naxis1 < dsl[0] or dsl[1] > naxis1 or
