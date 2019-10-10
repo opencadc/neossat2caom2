@@ -30,10 +30,7 @@ In an empty directory (the 'working directory'), on a machine with Docker instal
    chmod +x neossat_run.sh
    ```
 
-3. In the working directory, create a file named 'todo.txt'. Put the list of 
-.fits files from the NEOSSat directories into this file.
-
-4. To run the application:
+1. To run the application:
 
     ```
     ./neossat_run.sh
