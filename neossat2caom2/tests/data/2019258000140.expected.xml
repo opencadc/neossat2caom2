@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="934be2d3-22c8-447f-98e9-951acfaf5a36">
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="934be2d3-22c8-447f-98e9-951acfaf5a37">
   <caom2:collection>NEOSSAT</caom2:collection>
-  <caom2:observationID>2019259111450</caom2:observationID>
-  <caom2:metaRelease>2019-09-16T11:14:50.509</caom2:metaRelease>
+  <caom2:observationID>2019258000140</caom2:observationID>
+  <caom2:metaRelease>2019-09-15T00:01:40.462</caom2:metaRelease>
   <caom2:algorithm>
     <caom2:name>exposure</caom2:name>
   </caom2:algorithm>
@@ -18,31 +18,36 @@
   </caom2:telescope>
   <caom2:instrument>
     <caom2:name>NEOSSat_Science</caom2:name>
+    <caom2:keywords>
+      <caom2:keyword>16</caom2:keyword>
+      <caom2:keyword>FINE_POINT</caom2:keyword>
+      <caom2:keyword>-</caom2:keyword>
+    </caom2:keywords>
   </caom2:instrument>
   <caom2:planes>
-    <caom2:plane caom2:id="6dbfbcc1-b04c-4ce2-9509-ae14e6a7bcdc">
+    <caom2:plane caom2:id="f64502b0-c03d-4ceb-8480-c8d9b1f03287">
       <caom2:productID>raw</caom2:productID>
-      <caom2:metaRelease>2019-09-16T11:14:50.509</caom2:metaRelease>
-      <caom2:dataRelease>2019-09-16T11:14:50.509</caom2:dataRelease>
+      <caom2:metaRelease>2019-09-15T00:01:40.462</caom2:metaRelease>
+      <caom2:dataRelease>2019-09-15T00:01:40.462</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
       <caom2:calibrationLevel>1</caom2:calibrationLevel>
       <caom2:provenance>
         <caom2:name>JNEOFITS</caom2:name>
         <caom2:version>2.09</caom2:version>
         <caom2:producer>NEOSSat</caom2:producer>
-        <caom2:runID>2019-09-16T14:44:06</caom2:runID>
+        <caom2:runID>2019-09-16T03:22:51</caom2:runID>
       </caom2:provenance>
       <caom2:artifacts>
-        <caom2:artifact caom2:id="148ff980-a666-4b9a-9800-d177a542a273">
-          <caom2:uri>ad:NEOSS/NEOS_SCI_2019259111450.fits</caom2:uri>
+        <caom2:artifact caom2:id="52650a70-639e-460a-a926-d6ff578cab88">
+          <caom2:uri>ad:NEOSS/NEOS_SCI_2019258000140.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
-            <caom2:part caom2:id="f5ff38cd-694b-4aa2-8552-cbc7f886d0fc">
+            <caom2:part caom2:id="2c674d49-b7d0-4b13-aa36-405f025b6108">
               <caom2:name>0</caom2:name>
               <caom2:chunks>
-                <caom2:chunk caom2:id="169cff54-f6a2-4088-9ab2-d7d85865bf80">
+                <caom2:chunk caom2:id="1dff10d3-5336-4056-ba6c-19d9c7bfc7de">
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
@@ -66,17 +71,17 @@
                         <caom2:refCoord>
                           <caom2:coord1>
                             <caom2:pix>544.0</caom2:pix>
-                            <caom2:val>134.82999999999996</caom2:val>
+                            <caom2:val>134.10416666666666</caom2:val>
                           </caom2:coord1>
                           <caom2:coord2>
                             <caom2:pix>515.0</caom2:pix>
-                            <caom2:val>28.479777777777777</caom2:val>
+                            <caom2:val>28.99688888888889</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>0.000833186982985762</caom2:cd11>
-                        <caom2:cd12>1.561716451626133e-05</caom2:cd12>
-                        <caom2:cd21>-1.561716451626133e-05</caom2:cd21>
-                        <caom2:cd22>0.000833186982985762</caom2:cd22>
+                        <caom2:cd11>0.0008331183095153692</caom2:cd11>
+                        <caom2:cd12>1.892952177679247e-05</caom2:cd12>
+                        <caom2:cd21>-1.892952177679247e-05</caom2:cd21>
+                        <caom2:cd22>0.0008331183095153692</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
@@ -116,7 +121,7 @@
                         <caom2:delta>0.001157688657407407</caom2:delta>
                         <caom2:refCoord>
                           <caom2:pix>0.5</caom2:pix>
-                          <caom2:val>58742.46864015047</caom2:val>
+                          <caom2:val>58741.00116275463</caom2:val>
                         </caom2:refCoord>
                       </caom2:function>
                     </caom2:axis>
@@ -130,29 +135,29 @@
         </caom2:artifact>
       </caom2:artifacts>
     </caom2:plane>
-    <caom2:plane caom2:id="ef191452-eb19-48e3-8284-6230448f52e3">
+    <caom2:plane caom2:id="e320873e-5887-4e83-a3cc-d9c0a5fcdb7c">
       <caom2:productID>clean</caom2:productID>
-      <caom2:metaRelease>2019-09-16T11:14:50.509</caom2:metaRelease>
-      <caom2:dataRelease>2019-09-16T11:14:50.509</caom2:dataRelease>
+      <caom2:metaRelease>2019-09-15T00:01:40.462</caom2:metaRelease>
+      <caom2:dataRelease>2019-09-15T00:01:40.462</caom2:dataRelease>
       <caom2:dataProductType>image</caom2:dataProductType>
       <caom2:calibrationLevel>2</caom2:calibrationLevel>
       <caom2:provenance>
         <caom2:name>JNEOFITS</caom2:name>
         <caom2:version>2.09</caom2:version>
         <caom2:producer>NEOSSat</caom2:producer>
-        <caom2:runID>2019-09-16T14:44:06</caom2:runID>
+        <caom2:runID>2019-09-16T03:22:51</caom2:runID>
       </caom2:provenance>
       <caom2:artifacts>
-        <caom2:artifact caom2:id="778baf65-e708-4417-a979-be776975545a">
-          <caom2:uri>ad:NEOSS/NEOS_SCI_2019259111450_clean.fits</caom2:uri>
+        <caom2:artifact caom2:id="74a65977-7fb6-4e59-814e-bb986f0561a0">
+          <caom2:uri>ad:NEOSS/NEOS_SCI_2019258000140_clean.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
-            <caom2:part caom2:id="0960d453-8ad8-4088-b869-dde606d9cd35">
+            <caom2:part caom2:id="7105e922-a028-4109-90bd-c6aa1cf33d09">
               <caom2:name>0</caom2:name>
               <caom2:chunks>
-                <caom2:chunk caom2:id="9bd2dd81-c7ee-4d2b-ab47-930d66a76368">
+                <caom2:chunk caom2:id="eb3a00c7-e67e-48ed-9d7d-2277e50e8ee5">
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
@@ -176,17 +181,17 @@
                         <caom2:refCoord>
                           <caom2:coord1>
                             <caom2:pix>544.0</caom2:pix>
-                            <caom2:val>134.82999999999996</caom2:val>
+                            <caom2:val>134.10416666666666</caom2:val>
                           </caom2:coord1>
                           <caom2:coord2>
                             <caom2:pix>515.0</caom2:pix>
-                            <caom2:val>28.479777777777777</caom2:val>
+                            <caom2:val>28.99688888888889</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
-                        <caom2:cd11>0.000833186982985762</caom2:cd11>
-                        <caom2:cd12>1.561716451626133e-05</caom2:cd12>
-                        <caom2:cd21>-1.561716451626133e-05</caom2:cd21>
-                        <caom2:cd22>0.000833186982985762</caom2:cd22>
+                        <caom2:cd11>0.0008331183095153692</caom2:cd11>
+                        <caom2:cd12>1.892952177679247e-05</caom2:cd12>
+                        <caom2:cd21>-1.892952177679247e-05</caom2:cd21>
+                        <caom2:cd22>0.0008331183095153692</caom2:cd22>
                       </caom2:function>
                     </caom2:axis>
                     <caom2:coordsys>FK5</caom2:coordsys>
@@ -226,7 +231,7 @@
                         <caom2:delta>0.001157688657407407</caom2:delta>
                         <caom2:refCoord>
                           <caom2:pix>0.5</caom2:pix>
-                          <caom2:val>58742.46864015047</caom2:val>
+                          <caom2:val>58741.00116275463</caom2:val>
                         </caom2:refCoord>
                       </caom2:function>
                     </caom2:axis>

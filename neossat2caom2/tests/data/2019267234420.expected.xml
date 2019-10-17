@@ -18,6 +18,11 @@
   </caom2:telescope>
   <caom2:instrument>
     <caom2:name>NEOSSat_Science</caom2:name>
+    <caom2:keywords>
+      <caom2:keyword>DESAT</caom2:keyword>
+      <caom2:keyword>21</caom2:keyword>
+      <caom2:keyword>-</caom2:keyword>
+    </caom2:keywords>
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="60898aa1-b9e1-4700-b6ba-d2622e6d4694">
@@ -35,7 +40,7 @@
       <caom2:artifacts>
         <caom2:artifact caom2:id="809394ab-2a1c-4367-b0d6-9c971b9d9e78">
           <caom2:uri>ad:NEOSS/NEOS_SCI_2019267234420_clean.fits</caom2:uri>
-          <caom2:productType>science</caom2:productType>
+          <caom2:productType>calibration</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>

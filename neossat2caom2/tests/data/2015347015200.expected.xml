@@ -13,6 +13,11 @@
   </caom2:telescope>
   <caom2:instrument>
     <caom2:name>NEOSSat_Science</caom2:name>
+    <caom2:keywords>
+      <caom2:keyword>16</caom2:keyword>
+      <caom2:keyword>FINE_POINT</caom2:keyword>
+      <caom2:keyword>-</caom2:keyword>
+    </caom2:keywords>
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="185ad007-f140-4eed-94ef-75cf32460de2">

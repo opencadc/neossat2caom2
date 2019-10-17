@@ -179,9 +179,11 @@ def _generate_plot(fqn, dpi_factor, image_data, image_header):
         yend = naxis2
     else:
         dsl = list(map(
-            int, re.split('\\[(\\d+):(\\d+),(\\d+):(\\d+)\\]', datasec)[1:5]))
+            int, re.split('\\[(-*\\d+):(-*\\d+),(-*\\d+):(-*\\d+)\\]',
+                          datasec)[1:5]))
         if (naxis1 < dsl[0] or dsl[1] > naxis1 or
-                naxis2 < dsl[2] or dsl[3] > naxis2):
+                naxis2 < dsl[2] or dsl[3] > naxis2 or
+                dsl[1] - dsl[0] > naxis1 or dsl[3] - dsl[2] > naxis2):
             xstart = ystart = 0
             xend = naxis1
             yend = naxis2

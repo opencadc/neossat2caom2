@@ -76,7 +76,7 @@ import traceback
 
 from caom2 import Observation, CalibrationLevel, Axis, CoordAxis1D
 from caom2 import RefCoord, SpectralWCS, CoordRange1D, Chunk
-from caom2 import CoordFunction2D, Dimension2D, Coord2D
+from caom2 import CoordFunction2D, Dimension2D, Coord2D, ProductType
 from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
 from caom2utils import WcsParser
 from caom2pipe import astro_composable as ac
@@ -176,6 +176,14 @@ class NEOSSatName(ec.StorageName):
         return '.png' in entry
 
 
+def get_artifact_product_type(header):
+    result = ProductType.SCIENCE
+    obs_intent = get_obs_intent(header)
+    if obs_intent == 'calibration':
+        result = ProductType.CALIBRATION
+    return result
+
+
 def get_calibration_level(uri):
     cal_level = CalibrationLevel.RAW_STANDARD
     if 'clean' in uri or 'cor' in uri:
@@ -201,9 +209,35 @@ def get_dec(header):
 
 
 def get_obs_intent(header):
-    result = header.get('INTENT')
-    if result is not None:
-        result = result.lower()
+    # DB 17-10-19
+    # For Observation.intent, ignore the INTENT keyword now.  Instead,
+    # if MODE value contains “FINE_POINT” or “FINE_SLEW”:
+    #   Observation.intent = ‘science’.
+    # else:
+    #   Observation.intent = ‘calibration’.
+    # Don’t do an exact match since the values have numerical components,
+    # e.g. “16 - FINE_POINT”.   I haven’t come across a file that does NOT have
+    # the MODE keyword (unlike INTENT) - but not sure what to set the ‘intent’
+    # to if there isn’t one.  I guess ‘science’ like caom2utils does?
+
+    # Just in case there are observations with OBJECT = DARK but also with
+    # FINE_POINT or FINE_SLEW modes, in get_obs_type set Observation.intent
+    # to ‘calibration’ if this function finds “result =  ‘dark’ “.   i.e. add
+    # code after the “result = result.lower()” line to set
+    # Observation.intent = ‘calibration’.
+
+    # According to Dave Balam these are all calibration:   FINE_SETTLE,
+    # ST_REACQUIRE and RATE_BRAKE, ST_ACQUIRE, EKF_SETTLE, 21 - DESAT,
+    # COARSE_SETTLE, COARSE_BRAKE, COURSE_SLEW
+    # Dave Balam also said this one appears on occasion:  XX - N/A” TBD
+
+    result = 'calibration'
+    mode = header.get('MODE')
+    if (mode is not None and
+            ('FINE_POINT' in mode or 'FINE_SLEW' in mode)):
+        obs_type = get_obs_type(header)
+        if obs_type != 'dark':
+            result = 'science'
     return result
 
 
@@ -321,6 +355,10 @@ def accumulate_bp(bp, uri):
     # If INSTRUME not in header, set Observation.instrument.name =
     # ‘NEOSSat_Science’
     bp.set_default('Observation.instrument.name', 'NEOSSat_Science')
+    # DB 17-10-19
+    # Set Observation.instrument.keywords to the value of the MODE keyword.
+    bp.clear('Observation.instrument.keywords')
+    bp.add_fits_attribute('Observation.instrument.keywords', 'MODE')
 
     bp.set('Observation.target.type', 'get_target_type(header)')
     bp.set('Observation.target.moving', 'get_target_moving(header)')
@@ -345,6 +383,7 @@ def accumulate_bp(bp, uri):
     bp.add_fits_attribute('Plane.provenance.runID', 'RUNID')
 
     bp.set_default('Artifact.releaseType', 'data')
+    bp.set('Artifact.productType', 'get_artifact_product_type(header)')
 
     bp.configure_time_axis(3)
     bp.set('Chunk.time.axis.axis.ctype', 'TIME')

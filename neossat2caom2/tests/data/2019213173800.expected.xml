@@ -7,12 +7,17 @@
     <caom2:name>exposure</caom2:name>
   </caom2:algorithm>
   <caom2:type>object</caom2:type>
-  <caom2:intent>science</caom2:intent>
+  <caom2:intent>calibration</caom2:intent>
   <caom2:telescope>
     <caom2:name>NEOSSat</caom2:name>
   </caom2:telescope>
   <caom2:instrument>
     <caom2:name>NEOSSat_Science</caom2:name>
+    <caom2:keywords>
+      <caom2:keyword>FINE_SETTLE</caom2:keyword>
+      <caom2:keyword>-</caom2:keyword>
+      <caom2:keyword>14</caom2:keyword>
+    </caom2:keywords>
   </caom2:instrument>
   <caom2:planes>
     <caom2:plane caom2:id="f4a63b29-bba2-4118-b23a-e02abbb10057">
@@ -28,7 +33,7 @@
       <caom2:artifacts>
         <caom2:artifact caom2:id="f8976249-9739-4653-947c-07d3bb491f13">
           <caom2:uri>ad:NEOSS/NEOS_SCI_2019213173800.fits</caom2:uri>
-          <caom2:productType>science</caom2:productType>
+          <caom2:productType>calibration</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
@@ -136,7 +141,7 @@
       <caom2:artifacts>
         <caom2:artifact caom2:id="5c23d82c-0b82-4331-9ae4-1a0eaac955d9">
           <caom2:uri>ad:NEOSS/NEOS_SCI_2019213173800_cor.fits</caom2:uri>
-          <caom2:productType>science</caom2:productType>
+          <caom2:productType>calibration</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
@@ -244,7 +249,7 @@
       <caom2:artifacts>
         <caom2:artifact caom2:id="022dfd2b-1597-463b-a03f-95b915cd35a4">
           <caom2:uri>ad:NEOSS/NEOS_SCI_2019213173800_cord.fits</caom2:uri>
-          <caom2:productType>science</caom2:productType>
+          <caom2:productType>calibration</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
           <caom2:parts>
