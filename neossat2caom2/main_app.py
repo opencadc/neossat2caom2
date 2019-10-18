@@ -231,10 +231,13 @@ def get_obs_intent(header):
     # COARSE_SETTLE, COARSE_BRAKE, COURSE_SLEW
     # Dave Balam also said this one appears on occasion:  XX - N/A” TBD
 
+    # Please add “FINE_HOLD” as a 3rd string for a ‘science’ observation.
+
     result = 'calibration'
     mode = header.get('MODE')
     if (mode is not None and
-            ('FINE_POINT' in mode or 'FINE_SLEW' in mode)):
+            ('FINE_POINT' in mode or 'FINE_SLEW' in mode or
+             'FINE_HOLD' in mode)):
         obs_type = get_obs_type(header)
         if obs_type != 'dark':
             result = 'science'
@@ -242,11 +245,34 @@ def get_obs_intent(header):
 
 
 def get_obs_type(header):
-    result = header.get('OBJECT')
-    if result is not None and result == 'DARK':
-        result = result.lower()
+    # DB 18-10-19
+    # And Dave thinks that if MODE contains the string “DESAT” then that
+    # observation is going to have an observation.type of ‘dark’.  So maybe
+    # change get_obs_type() to:
+
+    # def get_obs_type(header):
+    #    result = header.get(‘OBJECT’)
+    #    mode = header.get(‘MODE’)
+    #    if “DESAT” in mode:
+    #        result = ‘DARK’
+    #    if result is not None and result == ‘DARK’:
+    #        result = result.lower()
+    #    else:
+    #        result = ‘object’
+    #    return result
+    # (I wonder if ‘dark’ is ever the OBJECT value instead of ‘DARK’?
+    # AS always put the object search string in lower case.  I’ll have to try
+    # an ADQL query…)
+
+    mode = header.get('MODE')
+    if 'DESAT' in mode:
+        result = 'dark'
     else:
-        result = 'object'
+        obj = header.get('OBJECT')
+        if obj is not None and (obj == 'DARK' or obj == 'dark'):
+            result = obj.lower()
+        else:
+            result = 'object'
     return result
 
 
