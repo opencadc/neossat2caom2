@@ -19,9 +19,7 @@
   <caom2:instrument>
     <caom2:name>NEOSSat_Science</caom2:name>
     <caom2:keywords>
-      <caom2:keyword>DESAT</caom2:keyword>
-      <caom2:keyword>21</caom2:keyword>
-      <caom2:keyword>-</caom2:keyword>
+      <caom2:keyword>21-DESAT</caom2:keyword>
     </caom2:keywords>
   </caom2:instrument>
   <caom2:planes>

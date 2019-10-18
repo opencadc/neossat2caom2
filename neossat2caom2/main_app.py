@@ -208,6 +208,13 @@ def get_dec(header):
     return dec_deg
 
 
+def get_instrument_keywords(header):
+    mode = _get_mode(header)
+    # the blueprint splits for separate keywords on spaces
+    result = mode.replace(' ', '')
+    return result
+
+
 def get_obs_intent(header):
     # DB 17-10-19
     # For Observation.intent, ignore the INTENT keyword now.  Instead,
@@ -234,7 +241,7 @@ def get_obs_intent(header):
     # Please add “FINE_HOLD” as a 3rd string for a ‘science’ observation.
 
     result = 'calibration'
-    mode = header.get('MODE')
+    mode = _get_mode(header)
     if (mode is not None and
             ('FINE_POINT' in mode or 'FINE_SLEW' in mode or
              'FINE_HOLD' in mode)):
@@ -264,7 +271,7 @@ def get_obs_type(header):
     # AS always put the object search string in lower case.  I’ll have to try
     # an ADQL query…)
 
-    mode = header.get('MODE')
+    mode = _get_mode(header)
     if 'DESAT' in mode:
         result = 'dark'
     else:
@@ -340,6 +347,9 @@ def _get_energy(header):
         max_wl = mc.to_float(temp[1]) / 1e4
     return min_wl, max_wl
 
+def _get_mode(header):
+    return header.get('MODE')
+
 
 def _get_position(header):
     ra = header.get('RA')
@@ -383,8 +393,8 @@ def accumulate_bp(bp, uri):
     bp.set_default('Observation.instrument.name', 'NEOSSat_Science')
     # DB 17-10-19
     # Set Observation.instrument.keywords to the value of the MODE keyword.
-    bp.clear('Observation.instrument.keywords')
-    bp.add_fits_attribute('Observation.instrument.keywords', 'MODE')
+    bp.set('Observation.instrument.keywords',
+           'get_instrument_keywords(header)')
 
     bp.set('Observation.target.type', 'get_target_type(header)')
     bp.set('Observation.target.moving', 'get_target_moving(header)')

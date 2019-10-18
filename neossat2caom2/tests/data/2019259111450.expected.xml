@@ -19,9 +19,7 @@
   <caom2:instrument>
     <caom2:name>NEOSSat_Science</caom2:name>
     <caom2:keywords>
-      <caom2:keyword>16</caom2:keyword>
-      <caom2:keyword>FINE_POINT</caom2:keyword>
-      <caom2:keyword>-</caom2:keyword>
+      <caom2:keyword>16-FINE_POINT</caom2:keyword>
     </caom2:keywords>
   </caom2:instrument>
   <caom2:planes>
