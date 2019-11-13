@@ -44,8 +44,10 @@
           <caom2:parts>
             <caom2:part caom2:id="f5ff38cd-694b-4aa2-8552-cbc7f886d0fc">
               <caom2:name>0</caom2:name>
+              <caom2:productType>science</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="169cff54-f6a2-4088-9ab2-d7d85865bf80">
+                  <caom2:productType>science</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
@@ -154,8 +156,10 @@
           <caom2:parts>
             <caom2:part caom2:id="0960d453-8ad8-4088-b869-dde606d9cd35">
               <caom2:name>0</caom2:name>
+              <caom2:productType>science</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="9bd2dd81-c7ee-4d2b-ab47-930d66a76368">
+                  <caom2:productType>science</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>

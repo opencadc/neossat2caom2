@@ -15,7 +15,7 @@
   </caom2:target>
   <caom2:telescope>
     <caom2:name>NEOSSat</caom2:name>
-  </caom2:telescope>
+  </caom2:telescope>x
   <caom2:instrument>
     <caom2:name>NEOSSat_Science</caom2:name>
     <caom2:keywords>
@@ -44,8 +44,10 @@
           <caom2:parts>
             <caom2:part caom2:id="2c674d49-b7d0-4b13-aa36-405f025b6108">
               <caom2:name>0</caom2:name>
+              <caom2:productType>science</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="1dff10d3-5336-4056-ba6c-19d9c7bfc7de">
+                  <caom2:productType>science</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
@@ -154,8 +156,10 @@
           <caom2:parts>
             <caom2:part caom2:id="7105e922-a028-4109-90bd-c6aa1cf33d09">
               <caom2:name>0</caom2:name>
+              <caom2:productType>science</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="eb3a00c7-e67e-48ed-9d7d-2277e50e8ee5">
+                  <caom2:productType>science</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>

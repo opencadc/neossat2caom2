@@ -75,8 +75,8 @@ import sys
 import traceback
 
 from caom2 import Observation, CalibrationLevel, Axis, CoordAxis1D
-from caom2 import RefCoord, SpectralWCS, CoordRange1D, Chunk
-from caom2 import CoordFunction2D, Dimension2D, Coord2D, ProductType
+from caom2 import RefCoord, SpectralWCS, CoordRange1D, Chunk, TypedOrderedDict
+from caom2 import CoordFunction2D, Dimension2D, Coord2D, ProductType, Part
 from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
 from caom2utils import WcsParser
 from caom2pipe import astro_composable as ac
@@ -454,15 +454,36 @@ def update(observation, **kwargs):
     if 'fqn' in kwargs:
         fqn = kwargs['fqn']
 
-    for plane in observation.planes.values():
-        for artifact in plane.artifacts.values():
-            for part in artifact.parts.values():
-                for chunk in part.chunks:
-                    _build_chunk_energy(chunk, headers)
-                    _build_chunk_position(
-                        chunk, headers, observation.observation_id)
-
-    logging.debug('Done update.')
+    try:
+        for plane in observation.planes.values():
+            for artifact in plane.artifacts.values():
+                temp_parts = TypedOrderedDict(Part, )
+                # need to rename the BINARY TABLE extensions, which have
+                # differently telemetry, and remove their chunks
+                for part_key in ['1', '2', '3', '4', '5']:
+                    if part_key in artifact.parts:
+                        hdu_count = mc.to_int(part_key)
+                        temp = artifact.parts.pop(part_key)
+                        temp.product_type = ProductType.AUXILIARY
+                        temp.name = headers[hdu_count].get('EXTNAME')
+                        while len(temp.chunks) > 0:
+                            temp.chunks.pop()
+                        temp_parts.add(temp)
+                for part in artifact.parts.values():
+                    if part.name == '0':
+                        part.product_type = artifact.product_type
+                        for chunk in part.chunks:
+                            chunk.product_type = artifact.product_type
+                            _build_chunk_energy(chunk, headers)
+                            _build_chunk_position(
+                                chunk, headers, observation.observation_id)
+                for part in temp_parts.values():
+                    artifact.parts.add(part)
+        logging.debug('Done update.')
+    except Exception as e:
+        logging.error(e)
+        logging.debug(traceback.format_exc())
+        observation = None
     return observation
 
 
