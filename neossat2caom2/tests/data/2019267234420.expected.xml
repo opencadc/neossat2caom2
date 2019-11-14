@@ -44,8 +44,10 @@
           <caom2:parts>
             <caom2:part caom2:id="301120de-8a89-4e38-afaa-0ed1d7dc3cd4">
               <caom2:name>0</caom2:name>
+              <caom2:productType>calibration</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="7d12eaa0-dbea-406a-8d2d-a6b85aa0ce3c">
+                  <caom2:productType>calibration</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>

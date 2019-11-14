@@ -37,8 +37,10 @@
           <caom2:parts>
             <caom2:part caom2:id="693e888c-8e32-48e2-b6b6-57f218a5ab04">
               <caom2:name>0</caom2:name>
+              <caom2:productType>science</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="4e40c66e-a7bb-4719-ae9e-d53a861044dd">
+                  <caom2:productType>science</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>

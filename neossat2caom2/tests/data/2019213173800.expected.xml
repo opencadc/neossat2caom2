@@ -37,8 +37,10 @@
           <caom2:parts>
             <caom2:part caom2:id="79be9c91-e7d9-477f-91c3-0ef5c9791a11">
               <caom2:name>0</caom2:name>
+              <caom2:productType>calibration</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="657ed82e-484d-4a77-9fc5-51ecf9ca0dac">
+                  <caom2:productType>calibration</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
@@ -145,8 +147,10 @@
           <caom2:parts>
             <caom2:part caom2:id="3219def4-aa05-47e2-b72e-b4929a09c578">
               <caom2:name>0</caom2:name>
+              <caom2:productType>calibration</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="8bc243e1-3c24-4648-a65c-584e12ac44df">
+                  <caom2:productType>calibration</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
@@ -253,8 +257,10 @@
           <caom2:parts>
             <caom2:part caom2:id="66aa6267-079e-4d93-a0a8-21d784abc128">
               <caom2:name>0</caom2:name>
+              <caom2:productType>calibration</caom2:productType>
               <caom2:chunks>
                 <caom2:chunk caom2:id="2689e5b3-fe95-4acf-b8b9-7739677c83a0">
+                  <caom2:productType>calibration</caom2:productType>
                   <caom2:naxis>2</caom2:naxis>
                   <caom2:positionAxis1>1</caom2:positionAxis1>
                   <caom2:positionAxis2>2</caom2:positionAxis2>
