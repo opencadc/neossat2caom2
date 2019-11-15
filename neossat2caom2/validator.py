@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2019.                            (c) 2019.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -67,103 +67,52 @@
 # ***********************************************************************
 #
 
-import os
-import stat
+import logging
+import traceback
 
-from mock import patch, Mock
+from caom2pipe import manage_composable as mc
+from neossat2caom2 import main_app, scrape
 
-from neossat2caom2 import scrape
-
-TEST_DIRS = [
-    '/tmp/astro',
-    '/tmp/astro/2017',
-    '/tmp/astro/2018',
-    '/tmp/astro/2019',
-    '/tmp/astro/2017/125',
-    '/tmp/astro/2017/127',
-    '/tmp/astro/2017/125/dark',
-    '/tmp/astro/2017/125/dark/fine_point',
-    '/tmp/astro/2017/125/m31',
-    '/tmp/astro/2017/125/m31/reacquire',
-]
-
-TEST_END_TIME = 15704859000
+__all__ = ['NeossatValidator', 'validate']
 
 
-@patch('neossat2caom2.scrape.FTPHost')
-def test_build_todo(ftp_mock):
-    _make_test_dirs()
-    ftp_mock.return_value.__enter__.return_value.listdir.\
-        side_effect = _list_dirs
-    ftp_mock.return_value.__enter__.return_value.stat. \
-        side_effect = _entry_stats
-    test_start = TEST_END_TIME - 1000
-    test_result = scrape._build_todo(test_start, 'localhost', '/tmp/astro')
-    assert test_result is not None, 'expected result'
-    assert len(test_result) == 14, 'wrong length of all the entries'
-    test_todo_list, test_max = scrape._remove_dir_names(test_result, test_start)
-    assert test_todo_list is not None, 'expect a todo list'
-    assert test_max is not None, 'expect a max time'
-    assert test_max == TEST_END_TIME, 'wrong max time'
-    assert len(test_todo_list) == 5, 'wrong length of file entries'
-    assert '/tmp/astro/2017/125/dark/fine_point/a.fits' in test_todo_list, \
-        'missing leafiest entry'
-    assert '/tmp/astro/2017/127/e.fits' in test_todo_list, \
-        'missing less leafy entry'
+class NeossatValidator(mc.Validator):
+    def __init__(self):
+        super(NeossatValidator, self).__init__(
+            source_name=main_app.COLLECTION, preview_suffix='png')
+        # a dictionary where the file name is the key, and the fully-qualified
+        # file name at the FTP site is the value
+        self._fully_qualified_list = None
+
+    def read_list_from_source(self):
+        validator_list, fully_qualified_list = scrape.list_for_validate(
+            self._config)
+        self._fully_qualified_list = fully_qualified_list
+        return validator_list
+
+    def write_todo(self):
+        if len(self._source) == 0:
+            logging.info(f'No entries to write to {self._config.work_fqn}')
+        else:
+            with open(self._config.work_fqn, 'w') as f:
+                for entry in self._source:
+                    f.write(f'{self._fully_qualified_list[entry]}\n')
 
 
-class StatMock(object):
-    def __init__(self, mtime, mode):
-        self.st_mtime = mtime
-        self.st_mode = mode
+def validate():
+    validator = NeossatValidator()
+    validator.validate()
+    validator.write_todo()
 
 
-def _entry_stats(fqn):
-    dir_mode = stat.S_IFDIR
-    file_mode = stat.S_IFREG
-    if fqn in TEST_DIRS:
-        result = StatMock(mtime=TEST_END_TIME, mode=dir_mode)
-    else:
-        result = StatMock(mtime=TEST_END_TIME, mode=file_mode)
-    return result
-
-
-def _list_dirs(dir_name):
-    if dir_name == '/tmp/astro':
-        return ['2017', '2018', '2019']
-    elif dir_name == '/tmp/astro/2017':
-        return ['125', '127']
-    elif dir_name == '/tmp/astro/2017/125':
-        return ['dark', 'm31']
-    elif dir_name == '/tmp/astro/2017/125/dark':
-        return ['fine_point']
-    elif dir_name == '/tmp/astro/2017/125/m31':
-        return ['reacquire']
-    elif dir_name == '/tmp/astro/2017/125/dark/fine_point':
-        return ['a.fits', 'b.fits']
-    elif dir_name == '/tmp/astro/2017/125/m31/reacquire':
-        return ['c.fits', 'd.fits']
-    elif dir_name == '/tmp/astro/2017/127':
-        return ['e.fits']
-    elif dir_name == '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO':
-        return ['NEOS_SCI_2019213215700_cord.fits',
-                'NEOS_SCI_2019213215700.fits',
-                'NEOS_SCI_2019213215700_clean.fits']
-    else:
-        return []
-
-
-def _make_test_dirs():
-    if not os.path.exists('/tmp/astro'):
-        for dir_name in TEST_DIRS:
-            os.mkdir(dir_name)
-        with open('/tmp/astro/2017/125/dark/fine_point/a.fits', 'w') as f:
-            f.write('abc')
-        with open('/tmp/astro/2017/125/dark/fine_point/b.fits', 'w') as f:
-            f.write('abc')
-        with open('/tmp/astro/2017/125/m31/reacquire/c.fits', 'w') as f:
-            f.write('abc')
-        with open('/tmp/astro/2017/125/m31/reacquire/d.fits', 'w') as f:
-            f.write('abc')
-        with open('/tmp/astro/2017/127/e.fits', 'w') as f:
-            f.write('abc')
+if __name__ == '__main__':
+    import sys
+    try:
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
+        validate()
+        sys.exit(0)
+    except Exception as e:
+        logging.error(e)
+        logging.debug(traceback.format_exc())
+        sys.exit(-1)
