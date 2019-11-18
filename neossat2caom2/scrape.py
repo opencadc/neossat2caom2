@@ -99,11 +99,13 @@ def _build_todo(start_date, ftp_site, ftp_dir):
             for entry in dirs:
                 entry_fqn = '{}/{}'.format(ftp_dir, entry)
                 entry_stats = ftp_host.stat(entry_fqn)
-                if entry_stats.st_mtime >= start_date:
-                    if stat.S_ISDIR(entry_stats.st_mode):
-                        # True - it's a directory, follow it down later
-                        listing[entry_fqn] = [True, entry_stats.st_mtime]
-                    elif entry.endswith('.fits'):
+                if stat.S_ISDIR(entry_stats.st_mode):
+                    # True - it's a directory, follow it down later
+                    listing[entry_fqn] = [True, entry_stats.st_mtime]
+                elif entry.endswith('.fits'):
+                    # the ftp site does not bubble up modifications times
+                    # to the top-level directories, so check every file
+                    if entry_stats.st_mtime >= start_date:
                         # False - it's a file, just leave it in the list
                         listing[entry_fqn] = [False, entry_stats.st_mtime]
                         logging.info('Adding entry {}'.format(entry_fqn))

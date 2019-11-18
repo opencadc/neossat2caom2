@@ -117,6 +117,7 @@ def test_validator(ftp_mock, caps_mock, tap_mock):
          b'<INFO name="QUERY_STATUS" value="OK" />\n'
          b'</RESOURCE>\n'
          b'</VOTABLE>\n']
+    tap_mock.return_value.__enter__.return_value = response
 
     test_scrape._make_test_dirs()
     ftp_mock.return_value.__enter__.return_value.listdir. \
@@ -124,7 +125,10 @@ def test_validator(ftp_mock, caps_mock, tap_mock):
     ftp_mock.return_value.__enter__.return_value.stat. \
         side_effect = test_scrape._entry_stats
 
-    tap_mock.return_value.__enter__.return_value = response
+    if not os.path.exists('/usr/src/app/cadcproxy.pem'):
+        with open('/usr/src/app/cadcproxy.pem', 'w') as f:
+            f.write('proxy content')
+
     getcwd_orig = os.getcwd
     os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
     try:
