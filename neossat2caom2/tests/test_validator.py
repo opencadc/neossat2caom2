@@ -77,9 +77,10 @@ import test_main_app, test_scrape
 
 
 @patch('cadcdata.core.net.BaseWsClient.post')
+@patch('cadcdata.core.net.BaseWsClient.get')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('neossat2caom2.scrape.FTPHost')
-def test_validator(ftp_mock, caps_mock, tap_mock):
+def test_validator(ftp_mock, caps_mock, ad_mock, tap_mock):
     caps_mock.return_value = 'https://sc2.canfar.net/sc2repo'
     response = Mock()
     response.status_code = 200
@@ -119,6 +120,11 @@ def test_validator(ftp_mock, caps_mock, tap_mock):
          b'</VOTABLE>\n']
     tap_mock.return_value.__enter__.return_value = response
 
+    ad_response = Mock()
+    ad_response.status_code = 200
+    ad_response.text = []
+    ad_mock.return_value = ad_response
+
     test_scrape._make_test_dirs()
     ftp_mock.return_value.__enter__.return_value.listdir. \
         side_effect = test_scrape._list_dirs
@@ -144,14 +150,14 @@ def test_validator(ftp_mock, caps_mock, tap_mock):
         if os.path.exists(test_source_list_fqn):
             os.unlink(test_source_list_fqn)
 
-        test_source, test_destination = test_subject.validate()
+        test_source, test_meta, test_data = test_subject.validate()
         assert test_source is not None, 'expected source result'
-        assert test_destination is not None, 'expected destination result'
+        assert test_meta is not None, 'expected destination result'
         assert len(test_source) == 1, 'wrong number of source results'
         assert 'NEOS_SCI_2019213215700_clean.fits' in test_source, \
             'wrong source content'
-        assert len(test_destination) == 1, 'wrong # of destination results'
-        assert 'NEOS_SCI_2019213215700_cor.fits' in test_destination, \
+        assert len(test_meta) == 1, 'wrong # of destination results'
+        assert 'NEOS_SCI_2019213215700_cor.fits' in test_meta, \
             'wrong destination content'
         assert os.path.exists(test_listing_fqn), 'should create file record'
 
@@ -165,10 +171,9 @@ def test_validator(ftp_mock, caps_mock, tap_mock):
             'unexpected content'
 
         # does the cached list work too?
-        test_cache = test_subject.read_list_from_source()
+        test_cache = test_subject.read_from_source()
         assert test_cache is not None, 'expected cached source result'
-        assert next(iter(test_cache)) == \
-            'NEOS_SCI_2019213215700_cord.fits\n', \
+        assert next(iter(test_cache)) == 'NEOS_SCI_2019213215700.fits', \
             'wrong cached result'
     finally:
         os.getcwd = getcwd_orig

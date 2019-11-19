@@ -84,7 +84,7 @@ class NeossatValidator(mc.Validator):
         # file name at the FTP site is the value
         self._fully_qualified_list = None
 
-    def read_list_from_source(self):
+    def read_from_source(self):
         validator_list, fully_qualified_list = scrape.list_for_validate(
             self._config)
         self._fully_qualified_list = fully_qualified_list
@@ -96,6 +96,8 @@ class NeossatValidator(mc.Validator):
         else:
             with open(self._config.work_fqn, 'w') as f:
                 for entry in self._source:
+                    f.write(f'{self._fully_qualified_list[entry]}\n')
+                for entry in self._destination_data:
                     f.write(f'{self._fully_qualified_list[entry]}\n')
 
 

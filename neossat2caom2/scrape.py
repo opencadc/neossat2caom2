@@ -161,24 +161,22 @@ def build_todo(start_date):
 
 def list_for_validate(config):
     """
-    :return: The dictview of files available from the CSA Open Data ftp site,
-        which will operate as a set.
+    :return: A dict, where keys are file names available from the CSA Open Data
+        ftp site, and values are the timestamps for the files at the CSA site.
     """
     list_fqn = os.path.join(config.working_directory, NEOSSAT_SOURCE_LIST)
     if os.path.exists(list_fqn):
         logging.debug(f'Retrieve content from existing file {list_fqn}')
-        with open(list_fqn, 'r') as f:
-            temp = f.readlines()
+        temp = mc.read_as_yaml(list_fqn)
     else:
         logging.debug('No cached content, retrieve content from FTP site.')
         ts_s = mc.make_seconds(NEOSSAT_START_DATE)
-        todo_list, ignore_max_date = build_todo(ts_s)
-        temp = todo_list.keys()
-        with open(list_fqn, 'w') as f:
-            f.write('\n'.join(ii for ii in temp))
+        temp, ignore_max_date = build_todo(ts_s)
+        mc.write_as_yaml(temp, list_fqn)
 
     # remove the fully-qualified path names from the validator list
     # while creating a dictionary where the file name is the key, and the
     # fully-qualified file name at the FTP site is the value
     validator_list = {ii.split('/')[-1]: ii for ii in temp}
-    return validator_list.keys(), validator_list
+    result = {ii.split('/')[-1]: temp[ii] for ii in temp}
+    return result, validator_list
