@@ -1,4 +1,4 @@
-working_directory: /usr/src/app
+working_directory: /usr/src/app/neossat2caom2/neossat2caom2/tests/data
 # the netrc_filename value must be a fully-qualified name
 # netrc_filename: /usr/src/app/netrc
 proxy_file_name: /usr/src/app/cadcproxy.pem

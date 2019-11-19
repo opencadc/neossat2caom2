@@ -76,11 +76,11 @@ class CsaPageScrape(mc.Work):
     CAOM record creation.
     """
 
-    def __init__(self, from_time):
+    def __init__(self, from_time, sidecar_dir):
         # make a string into a datetime value, but the input to the
         # build_todo method is a timestamp
         temp = mc.increment_time(from_time, 0).timestamp()
-        self.todo_list, max_date = scrape.build_todo(temp)
+        self.todo_list, max_date = scrape.build_todo(temp, sidecar_dir)
         super(CsaPageScrape, self).__init__(max_date)
 
     def initialize(self):

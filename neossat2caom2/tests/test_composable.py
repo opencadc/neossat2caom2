@@ -75,9 +75,9 @@ from mock import patch, Mock
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import composable, APPLICATION, NEOSSatName, NEOS_BOOKMARK
 
-STATE_FILE = '/usr/src/app/state.yml'
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
+STATE_FILE = os.path.join(TEST_DATA_DIR, 'state.yml')
 START_TIME = datetime.utcnow()
 TEST_START_TIME = (START_TIME - timedelta(days=2)).isoformat()
 TEST_TIMESTAMP_1 = (START_TIME - timedelta(days=1)).timestamp()
@@ -115,9 +115,9 @@ TEST_FILE_LIST = [
 def test_run_state():
     _write_state(TEST_START_TIME)
     # execution
-    with patch('neossat2caom2.scrape._build_todo') as query_mock, \
+    with patch('neossat2caom2.scrape._append_todo') as query_mock, \
             patch('caom2pipe.execute_composable._do_one') as run_mock:
-        query_mock.side_effect = _build_todo_mock
+        query_mock.side_effect = _append_todo_mock
         getcwd_orig = os.getcwd
         os.getcwd = Mock(return_value=TEST_DATA_DIR)
         try:
@@ -145,7 +145,7 @@ def test_run_by_file():
             os.getcwd = getcwd_orig
 
 
-def _build_todo_mock(ignore1, ignore2, ignore3):
+def _append_todo_mock(ignore1, ignore2, ignore3, ignore4, ignore5, ignore6):
     temp = {}
     for f_name in TEST_FILE_LIST[:8]:
         temp[f_name] = [False, TEST_TIMESTAMP_1]

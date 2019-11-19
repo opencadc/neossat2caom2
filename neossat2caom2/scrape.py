@@ -72,7 +72,7 @@ import os
 import stat
 import traceback
 
-from ftputil import FTPHost
+from ftputil import FTPHost, error
 
 from caom2pipe import manage_composable as mc
 
@@ -83,16 +83,43 @@ NEOS_DIR = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO'
 # the earliest dated file I could find on the FTP site was 10-18-18
 NEOSSAT_START_DATE = '2018-10-01T00:00:00.000'
 NEOSSAT_SOURCE_LIST = 'source_listing.yml'
+NEOSSAT_DIR_LIST = 'source_dir_listing.csv'
 
 
-def _build_todo(start_date, ftp_site, ftp_dir):
+def _append_source_listing(start_date, sidecar_dir, current):
     """Recursively visit directories at the ftp site, looking for .fits
     files. If the file modification time is >= start_date, that file
     is a candidate for transfer.
 
+    Use a local file as a cache of listing information, for better
+    repeatability.
+
     :return a dict, where keys are the fully-qualified file names on the
         ftp host server, and the values timestamps"""
-    listing = {}
+
+    logging.debug('Begin build_todo with date {}'.format(start_date))
+
+    # get the cache of directory names that have been listed
+    dir_list_fqn = os.path.join(sidecar_dir, NEOSSAT_DIR_LIST)
+    original_dirs_list = {}
+    if os.path.exists(dir_list_fqn):
+        with open(dir_list_fqn, 'r') as f:
+            for line in f:
+                temp = line.split(',')
+                original_dirs_list[temp[0]] = temp[1]
+
+    # use that cache, plus the original content listing, to finish the
+    # source site listing
+    temp = _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, NEOS_DIR,
+                        current, original_dirs_list)
+    todo_list, max_date = _remove_dir_names(temp, start_date)
+    logging.info('End build_todo with {} records, date {}.'.format(
+        len(todo_list), max_date))
+    return todo_list, max_date
+
+
+def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
+                 original_dirs_list):
     try:
         with FTPHost(ftp_site, 'anonymous', '@anonymous') as ftp_host:
             dirs = ftp_host.listdir(ftp_dir)
@@ -101,27 +128,35 @@ def _build_todo(start_date, ftp_site, ftp_dir):
                 entry_stats = ftp_host.stat(entry_fqn)
                 if stat.S_ISDIR(entry_stats.st_mode):
                     # True - it's a directory, follow it down later
-                    listing[entry_fqn] = [True, entry_stats.st_mtime]
+                    if entry_fqn not in original_dirs_list:
+                        listing[entry_fqn] = [True, entry_stats.st_mtime]
                 elif entry.endswith('.fits'):
                     # the ftp site does not bubble up modifications times
                     # to the top-level directories, so check every file
                     if entry_stats.st_mtime >= start_date:
                         # False - it's a file, just leave it in the list
                         listing[entry_fqn] = [False, entry_stats.st_mtime]
-                        logging.info('Adding entry {}'.format(entry_fqn))
+                        logging.debug('Adding entry {}'.format(entry_fqn))
             ftp_host.close()
 
         temp_listing = {}
         for entry, value in listing.items():
-            if value[0]:  # is a directory
+            if value[0] and entry not in original_dirs_list:  # is a directory
+                temp_listing.update(
+                    _append_todo(start_date, sidecar_dir, ftp_site, entry,
+                                 temp_listing, original_dirs_list))
+                _sidecar(entry, value, sidecar_dir)
                 logging.info('Adding results for {}'.format(entry))
-                temp_listing.update(_build_todo(start_date, ftp_site, entry))
 
         listing.update(temp_listing)
 
     except Exception as e:
         logging.error(e)
         logging.debug(traceback.format_exc())
+        if isinstance(e, error.FTPOSError):
+            list_fqn = os.path.join(sidecar_dir, NEOSSAT_SOURCE_LIST)
+            logging.warning(f'Writing interim source listing {list_fqn}')
+            mc.write_as_yaml(listing, list_fqn)
         raise mc.CadcException('Could not list {} on {}'.format(
             ftp_dir, ftp_site))
     return listing
@@ -141,18 +176,25 @@ def _remove_dir_names(item_list, start_date):
     return todo_list, max_date
 
 
-def build_todo(start_date):
+def _sidecar(entry, meta, sidecar_dir):
+    fqn = os.path.join(sidecar_dir, NEOSSAT_DIR_LIST)
+    with open(fqn, 'a') as f:
+        f.write(f'{entry}, {meta[1]}\n')
+
+
+def build_todo(start_date, sidecar_dir):
     """
     Build a list of file names where the modification time for the file
     is >= start_time.
 
     :param start_date timestamp in seconds since the epoch
+    :param sidecar_dir where to cache ftp directory listing progress
     :return a dict, where keys are file names on the ftp host server, and
         values are timestamps, plus the max timestamp from the ftp host
         server for file addition
     """
     logging.debug('Begin build_todo with date {}'.format(start_date))
-    temp = _build_todo(start_date, ASC_FTP_SITE, NEOS_DIR)
+    temp = _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, NEOS_DIR, {}, {})
     todo_list, max_date = _remove_dir_names(temp, start_date)
     logging.info('End build_todo with {} records, date {}.'.format(
         len(todo_list), max_date))
@@ -163,16 +205,23 @@ def list_for_validate(config):
     """
     :return: A dict, where keys are file names available from the CSA Open Data
         ftp site, and values are the timestamps for the files at the CSA site.
+        available from the CSA Open Data ftp site, and values are the
+        fully-qualified names at the CSA site, suitable for providing 'pull'
+        task type content for a todo file.
     """
     list_fqn = os.path.join(config.working_directory, NEOSSAT_SOURCE_LIST)
+    current = {}
     if os.path.exists(list_fqn):
         logging.debug(f'Retrieve content from existing file {list_fqn}')
         temp = mc.read_as_yaml(list_fqn)
-    else:
-        logging.debug('No cached content, retrieve content from FTP site.')
-        ts_s = mc.make_seconds(NEOSSAT_START_DATE)
-        temp, ignore_max_date = build_todo(ts_s)
-        mc.write_as_yaml(temp, list_fqn)
+        # 0 - False indicates a file, True indicates a directory
+        # 1 - timestamp
+        current = {key: [False, value] for key, value in temp.items()}
+
+    ts_s = mc.make_seconds(NEOSSAT_START_DATE)
+    temp, ignore_max_date = _append_source_listing(
+        ts_s, config.working_directory, current)
+    mc.write_as_yaml(temp, list_fqn)
 
     # remove the fully-qualified path names from the validator list
     # while creating a dictionary where the file name is the key, and the

@@ -69,10 +69,13 @@
 
 import os
 import stat
+import shutil
 
 from mock import patch, Mock
 
+from caom2pipe import manage_composable as mc
 from neossat2caom2 import scrape
+import test_main_app
 
 TEST_DIRS = [
     '/tmp/astro',
@@ -89,16 +92,20 @@ TEST_DIRS = [
 
 TEST_END_TIME = 15704859000
 
+MOCK_DIR = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/M32'
+EXISTING_MOCK_DIR = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/M33'
+
 
 @patch('neossat2caom2.scrape.FTPHost')
-def test_build_todo(ftp_mock):
+def test_append_todo(ftp_mock):
     _make_test_dirs()
     ftp_mock.return_value.__enter__.return_value.listdir.\
         side_effect = _list_dirs
     ftp_mock.return_value.__enter__.return_value.stat. \
         side_effect = _entry_stats
     test_start = TEST_END_TIME - 1000
-    test_result = scrape._build_todo(test_start, 'localhost', '/tmp/astro')
+    test_result = scrape._append_todo(
+        test_start, '/usr/src/app', 'localhost', '/tmp/astro', {}, {})
     assert test_result is not None, 'expected result'
     assert len(test_result) == 14, 'wrong length of all the entries'
     test_todo_list, test_max = scrape._remove_dir_names(test_result, test_start)
@@ -112,6 +119,43 @@ def test_build_todo(ftp_mock):
         'missing less leafy entry'
 
 
+@patch('neossat2caom2.scrape.FTPHost')
+def test_list_for_validate(ftp_mock):
+    # put some test appending files in place
+    source_dir_fqn = os.path.join(
+        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_DIR_LIST)
+    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
+                              'test_source_dir_listing.csv')
+    shutil.copy(source_fqn, source_dir_fqn)
+
+    source_list_fqn = os.path.join(
+        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST)
+    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
+                              'test_source_listing.yml')
+    shutil.copy(source_fqn, source_list_fqn)
+
+    ftp_mock.return_value.__enter__.return_value.listdir. \
+        side_effect = _list_dirs
+    ftp_mock.return_value.__enter__.return_value.stat. \
+        side_effect = _entry_stats
+    getcwd_orig = os.getcwd
+    os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
+    try:
+
+        test_config = mc.Config()
+        test_config.get_executors()
+        scrape.list_for_validate(test_config)
+
+        result = mc.read_as_yaml(source_list_fqn)
+        assert result is not None, 'expect a file record'
+        assert len(result) == 8, 'wrong number of entries'
+        assert f'{MOCK_DIR}/NEOS_SCI_2017213215701_cord.fits' in result, \
+            'wrong content'
+
+    finally:
+        os.getcwd = getcwd_orig
+
+
 class StatMock(object):
     def __init__(self, mtime, mode):
         self.st_mtime = mtime
@@ -121,7 +165,7 @@ class StatMock(object):
 def _entry_stats(fqn):
     dir_mode = stat.S_IFDIR
     file_mode = stat.S_IFREG
-    if fqn in TEST_DIRS:
+    if fqn in TEST_DIRS or fqn == MOCK_DIR or fqn == EXISTING_MOCK_DIR:
         result = StatMock(mtime=TEST_END_TIME, mode=dir_mode)
     else:
         result = StatMock(mtime=TEST_END_TIME, mode=file_mode)
@@ -148,7 +192,12 @@ def _list_dirs(dir_name):
     elif dir_name == '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO':
         return ['NEOS_SCI_2019213215700_cord.fits',
                 'NEOS_SCI_2019213215700.fits',
-                'NEOS_SCI_2019213215700_clean.fits']
+                'NEOS_SCI_2019213215700_clean.fits',
+                'M32',  # new content
+                'M33']  # already in list
+    elif dir_name == MOCK_DIR:
+        return ['NEOS_SCI_2017213215701_cord.fits',
+                'NEOS_SCI_2017213215701.fits']
     else:
         return []
 
