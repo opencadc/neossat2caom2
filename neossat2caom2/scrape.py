@@ -82,6 +82,7 @@ ASC_FTP_SITE = 'ftp.asc-csa.gc.ca'
 NEOS_DIR = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO'
 # the earliest dated file I could find on the FTP site was 10-18-18
 NEOSSAT_START_DATE = '2018-10-01T00:00:00.000'
+NEOSSAT_CACHE = 'source_cache.csv'
 NEOSSAT_SOURCE_LIST = 'source_listing.yml'
 NEOSSAT_DIR_LIST = 'source_dir_listing.csv'
 
@@ -91,8 +92,12 @@ def _append_source_listing(start_date, sidecar_dir, current):
     files. If the file modification time is >= start_date, that file
     is a candidate for transfer.
 
-    Use a local file as a cache of listing information, for better
-    repeatability.
+    Use two local files as a cache of listing information, for better
+    repeatability. The first file is a list of the directories that have
+    been successfully visited, so it's possible to not visit them again.
+    The second file is the interim listing of the visit results, before
+    the entries have been made unique, and the file/dir identification has
+    been removed.
 
     :return a dict, where keys are the fully-qualified file names on the
         ftp host server, and the values timestamps"""
@@ -146,20 +151,38 @@ def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
                     _append_todo(start_date, sidecar_dir, ftp_site, entry,
                                  temp_listing, original_dirs_list))
                 _sidecar(entry, value, sidecar_dir)
-                logging.info('Adding results for {}'.format(entry))
+                original_dirs_list[entry] = value[1]
+                logging.info('Added results for {}'.format(entry))
 
+        _cache(temp_listing, sidecar_dir)
         listing.update(temp_listing)
 
     except Exception as e:
         logging.error(e)
         logging.debug(traceback.format_exc())
-        if isinstance(e, error.FTPOSError):
-            list_fqn = os.path.join(sidecar_dir, NEOSSAT_SOURCE_LIST)
-            logging.warning(f'Writing interim source listing {list_fqn}')
-            mc.write_as_yaml(listing, list_fqn)
         raise mc.CadcException('Could not list {} on {}'.format(
             ftp_dir, ftp_site))
     return listing
+
+
+def _cache(content, in_dir):
+    # appending to a file makes no checks for uniqueness
+    fqn = os.path.join(in_dir, NEOSSAT_CACHE)
+    with open(fqn, 'a') as f:
+        for key, value in content.items():
+            f.write(f'{key}, {value[0]}, {value[1]}\n')
+
+
+def _read_cache(in_dir):
+    content = {}
+    fqn = os.path.join(in_dir, NEOSSAT_CACHE)
+    if os.path.exists(fqn):
+        with open(fqn, 'r') as f:
+            for line in f:
+                temp = line.split(',')
+                content[temp[0]] = [bool(temp[1].strip()),
+                                    mc.to_float(temp[2].strip())]
+    return content
 
 
 def _remove_dir_names(item_list, start_date):
@@ -210,13 +233,15 @@ def list_for_validate(config):
         task type content for a todo file.
     """
     list_fqn = os.path.join(config.working_directory, NEOSSAT_SOURCE_LIST)
-    current = {}
     if os.path.exists(list_fqn):
         logging.debug(f'Retrieve content from existing file {list_fqn}')
         temp = mc.read_as_yaml(list_fqn)
         # 0 - False indicates a file, True indicates a directory
         # 1 - timestamp
         current = {key: [False, value] for key, value in temp.items()}
+    else:
+        # current will be empty if there's no cache
+        current = _read_cache(config.working_directory)
 
     ts_s = mc.make_seconds(NEOSSAT_START_DATE)
     temp, ignore_max_date = _append_source_listing(

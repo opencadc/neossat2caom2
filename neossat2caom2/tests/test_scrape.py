@@ -121,18 +121,51 @@ def test_append_todo(ftp_mock):
 
 @patch('neossat2caom2.scrape.FTPHost')
 def test_list_for_validate(ftp_mock):
-    # put some test appending files in place
-    source_dir_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_DIR_LIST)
-    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
-                              'test_source_dir_listing.csv')
-    shutil.copy(source_fqn, source_dir_fqn)
-
+    # put some test appending files in place - these files indicate
+    # a 'No Exceptions' ending to list_for_validate occurred last
+    # time
+    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
+                         scrape.NEOSSAT_CACHE)
+    if os.path.exists(cache_fqn):
+        os.unlink(cache_fqn)
     source_list_fqn = os.path.join(
         test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST)
     source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
                               'test_source_listing.yml')
     shutil.copy(source_fqn, source_list_fqn)
+    _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 8, 2)
+
+
+@patch('neossat2caom2.scrape.FTPHost')
+def test_list_for_validate_exceptional_ending(ftp_mock):
+    # put some test appending files in place - these files indicate
+    # an FTPOSError ending to list_for_validate occurred last
+    # time
+    source_list_fqn = os.path.join(
+        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST)
+    if os.path.exists(source_list_fqn):
+        os.unlink(source_list_fqn)
+    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
+                             scrape.NEOSSAT_CACHE)
+    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
+                              'test_cache_listing.csv')
+    shutil.copy(source_fqn, cache_fqn)
+    _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 5, 14)
+
+
+class StatMock(object):
+    def __init__(self, mtime, mode):
+        self.st_mtime = mtime
+        self.st_mode = mode
+
+
+def _execute_and_check_list_for_validate(ftp_mock, source_list_fqn,
+                                         result_count, cache_count):
+    source_dir_fqn = os.path.join(
+        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_DIR_LIST)
+    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
+                              'test_source_dir_listing.csv')
+    shutil.copy(source_fqn, source_dir_fqn)
 
     ftp_mock.return_value.__enter__.return_value.listdir. \
         side_effect = _list_dirs
@@ -141,25 +174,24 @@ def test_list_for_validate(ftp_mock):
     getcwd_orig = os.getcwd
     os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
     try:
-
         test_config = mc.Config()
         test_config.get_executors()
         scrape.list_for_validate(test_config)
 
         result = mc.read_as_yaml(source_list_fqn)
         assert result is not None, 'expect a file record'
-        assert len(result) == 8, 'wrong number of entries'
+        assert len(result) == result_count, 'wrong number of entries'
         assert f'{MOCK_DIR}/NEOS_SCI_2017213215701_cord.fits' in result, \
             'wrong content'
 
+        cache_result = scrape._read_cache(test_config.working_directory)
+        assert cache_result is not None, 'expected return value'
+        assert len(cache_result) == cache_count, \
+            'wrong number of cached entries'
+        assert f'{MOCK_DIR}/NEOS_SCI_2017213215701.fits' in cache_result, \
+            'wrong content'
     finally:
         os.getcwd = getcwd_orig
-
-
-class StatMock(object):
-    def __init__(self, mtime, mode):
-        self.st_mtime = mtime
-        self.st_mode = mode
 
 
 def _entry_stats(fqn):
