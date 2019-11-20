@@ -20,7 +20,7 @@ RUN pip install cadcdata && \
 WORKDIR /usr/src/app
 
 RUN git clone https://github.com/opencadc-metadata-curation/caom2pipe.git && \
-  git pull origin master &&  pip install ./caom2pipe
+  pip install ./caom2pipe
   
 RUN git clone https://github.com/opencadc-metadata-curation/neossat2caom2.git && \
   cp ./neossat2caom2/scripts/config.yml / && \
