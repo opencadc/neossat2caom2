@@ -85,6 +85,8 @@ NEOSSAT_START_DATE = '2018-10-01T00:00:00.000'
 NEOSSAT_CACHE = 'source_cache.csv'
 NEOSSAT_SOURCE_LIST = 'source_listing.yml'
 NEOSSAT_DIR_LIST = 'source_dir_listing.csv'
+# information found in the state file
+NEOS_CONTEXT = 'neossat_context'
 
 
 def _append_source_listing(start_date, sidecar_dir, current):
@@ -131,14 +133,12 @@ def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
             for entry in dirs:
                 entry_fqn = '{}/{}'.format(ftp_dir, entry)
                 entry_stats = ftp_host.stat(entry_fqn)
-                if stat.S_ISDIR(entry_stats.st_mode):
-                    # True - it's a directory, follow it down later
-                    if entry_fqn not in original_dirs_list:
-                        listing[entry_fqn] = [True, entry_stats.st_mtime]
-                elif entry.endswith('.fits'):
-                    # the ftp site does not bubble up modifications times
-                    # to the top-level directories, so check every file
-                    if entry_stats.st_mtime >= start_date:
+                if entry_stats.st_mtime >= start_date:
+                    if stat.S_ISDIR(entry_stats.st_mode):
+                        # True - it's a directory, follow it down later
+                        if entry_fqn not in original_dirs_list:
+                            listing[entry_fqn] = [True, entry_stats.st_mtime]
+                    elif entry.endswith('.fits'):
                         # False - it's a file, just leave it in the list
                         listing[entry_fqn] = [False, entry_stats.st_mtime]
                         logging.debug('Adding entry {}'.format(entry_fqn))
@@ -205,19 +205,30 @@ def _sidecar(entry, meta, sidecar_dir):
         f.write(f'{entry}, {meta[1]}\n')
 
 
-def build_todo(start_date, sidecar_dir):
+def build_todo(start_date, sidecar_dir, state_fqn):
     """
     Build a list of file names where the modification time for the file
     is >= start_time.
 
     :param start_date timestamp in seconds since the epoch
     :param sidecar_dir where to cache ftp directory listing progress
+    :param state_fqn where to find the configurable list of sub-directories,
+        for bookmarked queries
     :return a dict, where keys are file names on the ftp host server, and
         values are timestamps, plus the max timestamp from the ftp host
         server for file addition
     """
     logging.debug('Begin build_todo with date {}'.format(start_date))
-    temp = _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, NEOS_DIR, {}, {})
+    temp = {}
+    state = mc.State(state_fqn)
+    sub_dirs = state.get_context(NEOS_CONTEXT)
+    # query the sub-directories of the root directory, because the timestamps
+    # do not bubble up for modifications, only for additions
+    for subdir in sub_dirs:
+        query_dir = os.path.join(NEOS_DIR, subdir)
+        temp.update(
+            _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, query_dir, {},
+                         {}))
     todo_list, max_date = _remove_dir_names(temp, start_date)
     logging.info('End build_todo with {} records, date {}.'.format(
         len(todo_list), max_date))

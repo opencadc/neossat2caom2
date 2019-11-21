@@ -79,7 +79,9 @@ __all__ = ['NeossatValidator', 'validate']
 class NeossatValidator(mc.Validator):
     def __init__(self):
         super(NeossatValidator, self).__init__(
-            source_name=main_app.COLLECTION, preview_suffix='png')
+            source_name=main_app.COLLECTION,
+            preview_suffix='png',
+            source_tz='America/Montreal')
         # a dictionary where the file name is the key, and the fully-qualified
         # file name at the FTP site is the value
         self._fully_qualified_list = None

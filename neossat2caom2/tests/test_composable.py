@@ -74,6 +74,7 @@ from mock import patch, Mock
 
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import composable, APPLICATION, NEOSSatName, NEOS_BOOKMARK
+from neossat2caom2 import scrape
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
@@ -171,7 +172,10 @@ def _check_execution(run_mock):
 def _write_state(start_time_str):
     test_time = datetime.strptime(start_time_str, mc.ISO_8601_FORMAT)
     test_bookmark = {'bookmarks': {NEOS_BOOKMARK:
-                                   {'last_record': test_time}}}
+                                   {'last_record': test_time}},
+                     'context': {
+                         scrape.NEOS_CONTEXT: ['NEOSS', '2017', '2018', '2019']
+                     }}
     mc.write_as_yaml(test_bookmark, STATE_FILE)
 
 
