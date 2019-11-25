@@ -1,4 +1,4 @@
-FROM opencadc/matplotlib:3.6-alpine
+FROM opencadc/matplotlib
 
 RUN apk --no-cache add bash \
     coreutils \
@@ -8,17 +8,19 @@ RUN apk --no-cache add bash \
 
 RUN pip install cadcdata && \
   pip install cadctap && \
+  pip install caom2 && \
   pip install caom2repo && \
+  pip install caom2utils && \
   pip install ftputil && \
+  pip install pytz && \
   pip install PyYAML && \
   pip install spherical-geometry && \
   pip install vos
 
 WORKDIR /usr/src/app
 
-RUN git clone https://github.com/opencadc-metadata-curation/caom2tools.git && \
-  cd caom2tools && git pull origin master && \
-  pip install ./caom2utils && pip install ./caom2pipe
+RUN git clone https://github.com/opencadc-metadata-curation/caom2pipe.git && \
+  pip install ./caom2pipe
   
 RUN git clone https://github.com/opencadc-metadata-curation/neossat2caom2.git && \
   cp ./neossat2caom2/scripts/config.yml / && \
