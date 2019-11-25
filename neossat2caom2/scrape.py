@@ -226,7 +226,7 @@ def build_todo(start_date, sidecar_dir, state_fqn):
     # query the sub-directories of the root directory, because the timestamps
     # do not bubble up for modifications, only for additions
     for subdir in sub_dirs:
-        query_dir = os.path.join(NEOS_DIR, subdir)
+        query_dir = os.path.join(NEOS_DIR, str(subdir))
         temp.update(
             _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, query_dir, {},
                          {}))
