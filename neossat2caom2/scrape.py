@@ -104,7 +104,7 @@ def _append_source_listing(start_date, sidecar_dir, current):
     :return a dict, where keys are the fully-qualified file names on the
         ftp host server, and the values timestamps"""
 
-    logging.debug('Begin build_todo with date {}'.format(start_date))
+    logging.debug(f'Begin build_todo with date {start_date}')
 
     # get the cache of directory names that have been listed
     dir_list_fqn = os.path.join(sidecar_dir, NEOSSAT_DIR_LIST)
@@ -120,8 +120,8 @@ def _append_source_listing(start_date, sidecar_dir, current):
     temp = _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, NEOS_DIR,
                         current, original_dirs_list)
     todo_list, max_date = _remove_dir_names(temp, start_date)
-    logging.info('End build_todo with {} records, date {}.'.format(
-        len(todo_list), max_date))
+    logging.info(
+        f'End build_todo with {len(todo_list)} records, date {max_date}.')
     return todo_list, max_date
 
 
@@ -141,7 +141,7 @@ def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
                     elif entry.endswith('.fits'):
                         # False - it's a file, just leave it in the list
                         listing[entry_fqn] = [False, entry_stats.st_mtime]
-                        logging.debug('Adding entry {}'.format(entry_fqn))
+                        logging.debug(f'Adding entry {entry_fqn}')
             ftp_host.close()
 
         temp_listing = {}
@@ -152,7 +152,7 @@ def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
                                  temp_listing, original_dirs_list))
                 _sidecar(entry, value, sidecar_dir)
                 original_dirs_list[entry] = value[1]
-                logging.info('Added results for {}'.format(entry))
+                logging.info(f'Added results for {entry}')
 
         _cache(temp_listing, sidecar_dir)
         listing.update(temp_listing)
@@ -160,8 +160,7 @@ def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
     except Exception as e:
         logging.error(e)
         logging.debug(traceback.format_exc())
-        raise mc.CadcException('Could not list {} on {}'.format(
-            ftp_dir, ftp_site))
+        raise mc.CadcException(f'Could not list {ftp_dir} on {ftp_site}')
     return listing
 
 
@@ -219,7 +218,7 @@ def build_todo(start_date, sidecar_dir, state_fqn):
         values are timestamps, plus the max timestamp from the ftp host
         server for file addition
     """
-    logging.debug('Begin build_todo with date {}'.format(start_date))
+    logging.debug(f'Begin build_todo with date {start_date}')
     temp = {}
     state = mc.State(state_fqn)
     sub_dirs = state.get_context(NEOS_CONTEXT)
@@ -231,8 +230,8 @@ def build_todo(start_date, sidecar_dir, state_fqn):
             _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, query_dir, {},
                          {}))
     todo_list, max_date = _remove_dir_names(temp, start_date)
-    logging.info('End build_todo with {} records, date {}.'.format(
-        len(todo_list), max_date))
+    logging.info(
+        f'End build_todo with {len(todo_list)} records, date {max_date}.')
     return todo_list, max_date
 
 
