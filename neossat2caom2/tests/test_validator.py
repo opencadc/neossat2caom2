@@ -153,7 +153,7 @@ def test_validator(ftp_mock, caps_mock, ad_mock, tap_mock):
         test_source, test_meta, test_data = test_subject.validate()
         assert test_source is not None, 'expected source result'
         assert test_meta is not None, 'expected destination result'
-        assert len(test_source) == 1, 'wrong number of source results'
+        assert len(test_source) == 15, 'wrong number of source results'
         assert 'NEOS_SCI_2019213215700_clean.fits' in test_source, \
             'wrong source content'
         assert len(test_meta) == 1, 'wrong # of destination results'
@@ -166,14 +166,16 @@ def test_validator(ftp_mock, caps_mock, ad_mock, tap_mock):
             'should create file record'
         with open(test_subject._config.work_fqn, 'r') as f:
             content = f.readlines()
-        assert content == ['/users/OpenData_DonneesOuvertes/pub/NEOSSAT/'
-                           'ASTRO/NEOS_SCI_2019213215700_clean.fits\n'], \
+        content_sorted = sorted(content)
+        assert content_sorted[0] == '/users/OpenData_DonneesOuvertes/pub/' \
+                                    'NEOSSAT/ASTRO/2017/125/DARK/FINE_POINT/' \
+                                    'NEOS_SCI_2017125084700.fits\n', \
             'unexpected content'
 
         # does the cached list work too?
         test_cache = test_subject.read_from_source()
         assert test_cache is not None, 'expected cached source result'
-        assert next(iter(test_cache)) == 'NEOS_SCI_2019213215700.fits', \
+        assert next(iter(test_cache)) == 'NEOS_SCI_2017125084700.fits', \
             'wrong cached result'
     finally:
         os.getcwd = getcwd_orig

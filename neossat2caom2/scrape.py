@@ -180,7 +180,8 @@ def _read_cache(in_dir):
         with open(fqn, 'r') as f:
             for line in f:
                 temp = line.split(',')
-                content[temp[0]] = [bool(temp[1].strip()),
+                temp_bool = False if temp[1].strip() == 'False' else True
+                content[temp[0]] = [temp_bool,
                                     mc.to_float(temp[2].strip())]
     return content
 
@@ -249,14 +250,14 @@ def list_for_validate(config):
         temp = mc.read_as_yaml(list_fqn)
         # 0 - False indicates a file, True indicates a directory
         # 1 - timestamp
-        current = {key: [False, value] for key, value in temp.items()}
+        cached = {key: [False, value] for key, value in temp.items()}
     else:
         # current will be empty if there's no cache
-        current = _read_cache(config.working_directory)
+        cached = _read_cache(config.working_directory)
 
     ts_s = mc.make_seconds(NEOSSAT_START_DATE)
     temp, ignore_max_date = _append_source_listing(
-        ts_s, config.working_directory, current)
+        ts_s, config.working_directory, cached)
     mc.write_as_yaml(temp, list_fqn)
 
     # remove the fully-qualified path names from the validator list

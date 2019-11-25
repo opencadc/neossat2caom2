@@ -125,7 +125,7 @@ def test_list_for_validate(ftp_mock):
     # a 'No Exceptions' ending to list_for_validate occurred last
     # time
     cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
-                         scrape.NEOSSAT_CACHE)
+                             scrape.NEOSSAT_CACHE)
     if os.path.exists(cache_fqn):
         os.unlink(cache_fqn)
     source_list_fqn = os.path.join(
@@ -150,7 +150,7 @@ def test_list_for_validate_exceptional_ending(ftp_mock):
     source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
                               'test_cache_listing.csv')
     shutil.copy(source_fqn, cache_fqn)
-    _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 5, 14)
+    _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 17, 14)
 
 
 class StatMock(object):
