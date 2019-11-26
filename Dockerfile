@@ -1,4 +1,4 @@
-FROM opencadc/matplotlib:3.6-alpine
+FROM opencadc/matplotlib
 
 RUN apk --no-cache add bash \
     coreutils \
