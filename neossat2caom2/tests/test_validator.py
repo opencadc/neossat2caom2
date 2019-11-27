@@ -77,15 +77,13 @@ import test_main_app, test_scrape
 
 
 @patch('cadcdata.core.net.BaseWsClient.post')
-@patch('cadcdata.core.net.BaseWsClient.get')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('neossat2caom2.scrape.FTPHost')
-def test_validator(ftp_mock, caps_mock, ad_mock, tap_mock):
+def test_validator(ftp_mock, caps_mock, post_mock):
     caps_mock.return_value = 'https://sc2.canfar.net/sc2repo'
     response = Mock()
     response.status_code = 200
-    response.iter_content.return_value = \
-        [b'<?xml version="1.0" encoding="UTF-8"?>\n'
+    y = [b'<?xml version="1.0" encoding="UTF-8"?>\n'
          b'<VOTABLE xmlns="http://www.ivoa.net/xml/VOTable/v1.3" '
          b'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="1.3">\n'
          b'<RESOURCE type="results">\n'
@@ -118,12 +116,46 @@ def test_validator(ftp_mock, caps_mock, ad_mock, tap_mock):
          b'<INFO name="QUERY_STATUS" value="OK" />\n'
          b'</RESOURCE>\n'
          b'</VOTABLE>\n']
-    tap_mock.return_value.__enter__.return_value = response
 
-    ad_response = Mock()
-    ad_response.status_code = 200
-    ad_response.text = []
-    ad_mock.return_value = ad_response
+    x = [b'<?xml version="1.0" encoding="UTF-8"?>\n'
+         b'<VOTABLE xmlns="http://www.ivoa.net/xml/VOTable/v1.3" '
+         b'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '
+         b'version="1.3">\n'
+         b'<RESOURCE type="results">\n'
+         b'<INFO name="QUERY_STATUS" value="OK" />\n'
+         b'<INFO name="QUERY_TIMESTAMP" value="2019-11-27T00:07:08.736" />\n'
+         b'<INFO name="QUERY" value="SELECT ingestDate, fileName&#xA;FROM '
+         b'archive_files&#xA;WHERE archiveName = \'NEOSS\'&#xA;AND '
+         b'fileName = \'xEOS_SCI_2019319035900.fits\'" />\n'
+         b'<TABLE>\n'
+         b'<FIELD name="ingestDate" datatype="char" arraysize="*" '
+         b'xtype="timestamp">\n'
+         b'<DESCRIPTION>file ingest date</DESCRIPTION>\n'
+         b'</FIELD>\n'
+         b'<FIELD name="fileName" datatype="char" arraysize="255*">\n'
+         b'<DESCRIPTION>file name</DESCRIPTION>\n'
+         b'</FIELD>\n'
+         b'<DATA>\n'
+         b'<TABLEDATA />\n'
+         b'</DATA>\n'
+         b'</TABLE>\n'
+         b'<INFO name="QUERY_STATUS" value="OK" />\n'
+         b'</RESOURCE>\n'
+         b'</VOTABLE>\n']
+
+    global count
+    count = 0
+
+    def _mock_shit(chunk_size):
+        global count
+        if count == 0:
+            count = 1
+            return y
+        else:
+            return x
+
+    response.iter_content.side_effect = _mock_shit
+    post_mock.return_value.__enter__.return_value = response
 
     test_scrape._make_test_dirs()
     ftp_mock.return_value.__enter__.return_value.listdir. \
@@ -153,7 +185,7 @@ def test_validator(ftp_mock, caps_mock, ad_mock, tap_mock):
         test_source, test_meta, test_data = test_subject.validate()
         assert test_source is not None, 'expected source result'
         assert test_meta is not None, 'expected destination result'
-        assert len(test_source) == 1, 'wrong number of source results'
+        assert len(test_source) == 15, 'wrong number of source results'
         assert 'NEOS_SCI_2019213215700_clean.fits' in test_source, \
             'wrong source content'
         assert len(test_meta) == 1, 'wrong # of destination results'
@@ -166,14 +198,16 @@ def test_validator(ftp_mock, caps_mock, ad_mock, tap_mock):
             'should create file record'
         with open(test_subject._config.work_fqn, 'r') as f:
             content = f.readlines()
-        assert content == ['/users/OpenData_DonneesOuvertes/pub/NEOSSAT/'
-                           'ASTRO/NEOS_SCI_2019213215700_clean.fits\n'], \
+        content_sorted = sorted(content)
+        assert content_sorted[0] == '/users/OpenData_DonneesOuvertes/pub/' \
+                                    'NEOSSAT/ASTRO/2017/125/DARK/FINE_POINT/' \
+                                    'NEOS_SCI_2017125084700.fits\n', \
             'unexpected content'
 
         # does the cached list work too?
         test_cache = test_subject.read_from_source()
         assert test_cache is not None, 'expected cached source result'
-        assert next(iter(test_cache)) == 'NEOS_SCI_2019213215700.fits', \
+        assert next(iter(test_cache)) == 'NEOS_SCI_2017125084700.fits', \
             'wrong cached result'
     finally:
         os.getcwd = getcwd_orig

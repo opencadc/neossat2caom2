@@ -347,6 +347,7 @@ def _get_energy(header):
         max_wl = mc.to_float(temp[1]) / 1e4
     return min_wl, max_wl
 
+
 def _get_mode(header):
     return header.get('MODE')
 
@@ -364,6 +365,8 @@ def _get_position(header):
         dec_temp = header.get('OBJCTDEC')
         ra = ra_temp.replace(' ', ':')
         dec = dec_temp.replace(' ', ':')
+    ra = None if ra == 'TBD' else ra
+    dec = None if dec == 'TBD' else dec
     if ra is not None and dec is not None:
         ra, dec = ac.build_ra_dec_as_deg(ra, dec)
     return ra, dec
@@ -534,56 +537,61 @@ def _build_chunk_position(chunk, headers, obs_id):
     # degrees/pixel; it’s 3 arcsec/unbinned pixel)= 3.0*XBINNING/3600.0
     # CDELT2 = 3.0*YBINNING/3600.0.  Set CROTA2=0.0
     header = headers[0]
-    header['CTYPE1'] = 'RA---TAN'
-    header['CTYPE2'] = 'DEC--TAN'
-    header['CUNIT1'] = 'deg'
-    header['CUNIT2'] = 'deg'
-    header['CRVAL1'] = get_ra(header)
-    header['CRVAL2'] = get_dec(header)
-    header['CRPIX1'] = get_position_axis_function_naxis1(header)
-    header['CRPIX2'] = get_position_axis_function_naxis2(header)
+    ra = get_ra(header)
+    dec = get_dec(header)
+    if ra is None or dec is None:
+        logging.warning(f'No position information for {obs_id}')
+    else:
+        header['CTYPE1'] = 'RA---TAN'
+        header['CTYPE2'] = 'DEC--TAN'
+        header['CUNIT1'] = 'deg'
+        header['CUNIT2'] = 'deg'
+        header['CRVAL1'] = ra
+        header['CRVAL2'] = dec
+        header['CRPIX1'] = get_position_axis_function_naxis1(header)
+        header['CRPIX2'] = get_position_axis_function_naxis2(header)
 
-    wcs_parser = WcsParser(header, obs_id, 0)
-    if chunk is None:
-        chunk = Chunk()
-    wcs_parser.augment_position(chunk)
+        wcs_parser = WcsParser(header, obs_id, 0)
+        if chunk is None:
+            chunk = Chunk()
+        wcs_parser.augment_position(chunk)
 
-    x_binning = header.get('XBINNING')
-    if x_binning is None:
-        x_binning = 1.0
-    cdelt1 = 3.0 * x_binning / 3600.0
-    y_binning = header.get('YBINNING')
-    if y_binning is None:
-        y_binning = 1.0
-    cdelt2 = 3.0 * y_binning / 3600.0
+        x_binning = header.get('XBINNING')
+        if x_binning is None:
+            x_binning = 1.0
+        cdelt1 = 3.0 * x_binning / 3600.0
+        y_binning = header.get('YBINNING')
+        if y_binning is None:
+            y_binning = 1.0
+        cdelt2 = 3.0 * y_binning / 3600.0
 
-    objct_rol = header.get('OBJCTROL')
-    if objct_rol is None:
-        objct_rol = 0.0
+        objct_rol = header.get('OBJCTROL')
+        if objct_rol is None:
+            objct_rol = 0.0
 
-    crota2 = 90.0 - objct_rol
-    crota2_rad = math.radians(crota2)
-    cd11 = cdelt1 * math.cos(crota2_rad)
-    cd12 = abs(cdelt2) * _sign(cdelt1) * math.sin(crota2_rad)
-    cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2_rad)
-    cd22 = cdelt2 * math.cos(crota2_rad)
+        crota2 = 90.0 - objct_rol
+        crota2_rad = math.radians(crota2)
+        cd11 = cdelt1 * math.cos(crota2_rad)
+        cd12 = abs(cdelt2) * _sign(cdelt1) * math.sin(crota2_rad)
+        cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2_rad)
+        cd22 = cdelt2 * math.cos(crota2_rad)
 
-    dimension = Dimension2D(header.get('NAXIS1'),
-                            header.get('NAXIS2'))
-    x = RefCoord(get_position_axis_function_naxis1(header),
-                 get_ra(header))
-    y = RefCoord(get_position_axis_function_naxis2(header),
-                 get_dec(header))
-    ref_coord = Coord2D(x, y)
-    function = CoordFunction2D(dimension,
-                               ref_coord,
-                               cd11,
-                               cd12,
-                               cd21,
-                               cd22)
-    chunk.position.axis.function = function
-    chunk.position_axis_1 = 1
-    chunk.position_axis_2 = 2
+        dimension = Dimension2D(header.get('NAXIS1'),
+                                header.get('NAXIS2'))
+        x = RefCoord(get_position_axis_function_naxis1(header),
+                     get_ra(header))
+        y = RefCoord(get_position_axis_function_naxis2(header),
+                     get_dec(header))
+        ref_coord = Coord2D(x, y)
+        function = CoordFunction2D(dimension,
+                                   ref_coord,
+                                   cd11,
+                                   cd12,
+                                   cd21,
+                                   cd22)
+        chunk.position.axis.function = function
+        chunk.position_axis_1 = 1
+        chunk.position_axis_2 = 2
 
 
 def _sign(value):

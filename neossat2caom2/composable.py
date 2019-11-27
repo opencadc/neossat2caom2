@@ -118,7 +118,8 @@ def _run_state():
     config.get_executors()
     state = mc.State(config.state_fqn)
     start_time = state.get_bookmark(NEOS_BOOKMARK)
-    state_work = work.CsaPageScrape(start_time)
+    state_work = work.CsaPageScrape(start_time, config.working_directory,
+                                    config.state_fqn)
     return ec.run_from_state(config, NEOSSatName, APPLICATION, meta_visitors,
                              data_visitors, NEOS_BOOKMARK, state_work)
 
