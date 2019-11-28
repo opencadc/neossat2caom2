@@ -81,7 +81,6 @@ from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
 from caom2utils import WcsParser
 from caom2pipe import astro_composable as ac
 from caom2pipe import manage_composable as mc
-from caom2pipe import execute_composable as ec
 
 
 __all__ = ['neossat_main_app', 'update', 'NEOSSatName', 'COLLECTION',
@@ -93,7 +92,7 @@ COLLECTION = 'NEOSSAT'
 ARCHIVE = 'NEOSS'
 
 
-class NEOSSatName(ec.StorageName):
+class NEOSSatName(mc.StorageName):
     """Naming rules:
     - support mixed-case file name storage, and mixed-case obs id values
     - support uncompressed files in storage
@@ -612,7 +611,7 @@ def _build_blueprints(uris):
     blueprints = {}
     for uri in uris:
         blueprint = ObsBlueprint(module=module)
-        if not ec.StorageName.is_preview(uri):
+        if not mc.StorageName.is_preview(uri):
             accumulate_bp(blueprint, uri)
         blueprints[uri] = blueprint
     return blueprints

@@ -76,7 +76,6 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
 from caom2 import Observation, ReleaseType, ProductType
-from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import ARCHIVE, NEOSSatName
 
@@ -131,7 +130,7 @@ def _augment(plane, uri, fqn, product_type):
 
 
 def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
-    naming = ec.CaomName(artifact.uri)
+    naming = mc.CaomName(artifact.uri)
     neoss_name = NEOSSatName(file_name=naming.file_name)
     preview = neoss_name.prev
     preview_fqn = os.path.join(working_dir, preview)
