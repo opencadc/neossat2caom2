@@ -2,10 +2,10 @@ working_directory: /usr/src/app
 # the netrc_filename value must be a fully-qualified name
 # netrc_filename: /usr/src/app/netrc
 proxy_file_name: /usr/src/app/cadcproxy.pem
-# operational value is ivo://cadc.nrc.ca/caom2repo
-resource_id: ivo://cadc.nrc.ca/sc2repo
-# operational value is ivo://cadc.nrc.ca/ams/neossat
+resource_id: ivo://cadc.nrc.ca/ams
+# test value is ivo://cadc.nrc.ca/sc2repo
 # tap_id: ivo://cadc.nrc.ca/sc2tap
+tap_id: ivo://cadc.nrc.ca/argus
 todo_file_name: todo.txt
 # values True False
 use_local_files: False
