@@ -1,9 +1,5 @@
 FROM opencadc/matplotlib:3.8-slim
 
-RUN apt-get update -y && apt-get dist-upgrade -y
-
-RUN apt-get install -y git
-
 RUN pip3 install cadcdata && \
   pip3 install cadctap && \
   pip3 install caom2 && \
@@ -18,6 +14,10 @@ RUN pip3 install cadcdata && \
   pip3 install vos
 
 WORKDIR /usr/src/app
+
+RUN apt-get update -y && apt-get dist-upgrade -y
+
+RUN apt-get install -y git
 
 ARG OPENCADC_BRANCH=master
 ARG OPENCADC_REPO=opencadc
