@@ -2,11 +2,7 @@ FROM opencadc/matplotlib:3.8-slim
 
 RUN apt-get update -y && apt-get dist-upgrade -y
 
-RUN apt-get install -y \
-    git
-#    python3-pip \
-#    python3-tz \
-#    python3-yaml
+RUN apt-get install -y git
 
 RUN pip3 install cadcdata && \
   pip3 install cadctap && \
