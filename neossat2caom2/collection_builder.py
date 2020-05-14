@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2019.                            (c) 2019.
+#  (c) 2020.                            (c) 2020.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -67,78 +67,26 @@
 # ***********************************************************************
 #
 
-"""
-Implements the default entry point functions for the workflow application.
-
-'run' executes based on either provided lists of work, or files on disk.
-'run_state' executes incrementally, usually based on time-boxed intervals.
-"""
-
 import logging
-import sys
-import traceback
 
-from caom2pipe import execute_composable as ec
-from caom2pipe import manage_composable as mc
-from caom2pipe import run_composable as rc
-from neossat2caom2 import APPLICATION, NEOSSatName, preview_augmentation
-from neossat2caom2 import work, collection_builder
+from caom2pipe import name_builder_composable as nbc
+from neossat2caom2 import main_app
 
-NEOS_BOOKMARK = 'neossat_timestamp'
-
-META_VISITORS = []
-DATA_VISITORS = [preview_augmentation]
+__all__ = ['NEOSSatBuilder']
 
 
-def _run():
-    """
-    Uses a todo file to identify the work to be done.
+class NEOSSatBuilder(nbc.StorageNameBuilder):
 
-    :return 0 if successful, -1 if there's any sort of failure. Return status
-        is used by airflow for task instance management and reporting.
-    """
-    builder = collection_builder.NEOSSatBuilder()
-    return rc.run_by_todo(name_builder=builder, command_name=APPLICATION,
-                          meta_visitors=META_VISITORS,
-                          data_visitors=DATA_VISITORS)
+    def __init__(self):
+        super(NEOSSatBuilder, self).__init__()
+        self._logger = logging.getLogger(__name__)
 
+    def build(self, entry):
+        """
 
-def run():
-    """Wraps _run in exception handling, with sys.exit calls."""
-    try:
-        result = _run()
-        sys.exit(result)
-    except Exception as e:
-        logging.error(e)
-        tb = traceback.format_exc()
-        logging.debug(tb)
-        sys.exit(-1)
-
-
-def _run_state():
-    """Uses a state file with a timestamp to control which files will be
-    retrieved from the CSA ftp host.
-
-    Ingestion is based on fully-qualified file names from the CSA ftp host,
-    because those are difficult to reproduce otherwise.
-    """
-    config = mc.Config()
-    config.get_executors()
-    state = mc.State(config.state_fqn)
-    start_time = state.get_bookmark(NEOS_BOOKMARK)
-    state_work = work.CsaPageScrape(start_time, config.working_directory,
-                                    config.state_fqn)
-    return ec.run_from_state(config, NEOSSatName, APPLICATION, META_VISITORS,
-                             DATA_VISITORS, NEOS_BOOKMARK, state_work)
-
-
-def run_state():
-    """Wraps _run_state in exception handling."""
-    try:
-        _run_state()
-        sys.exit(0)
-    except Exception as e:
-        logging.error(e)
-        tb = traceback.format_exc()
-        logging.debug(tb)
-        sys.exit(-1)
+        :param entry: an entry is a file name, or an ftp url that points
+            to a file name
+        :return:
+        """
+        self._logger.debug(f'Build a StorageName instance for {entry}.')
+        return main_app.NEOSSatName(file_name=entry)

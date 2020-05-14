@@ -66,5 +66,6 @@ task_types:
   - modify
 features:
   supports_composite: False
+  supports_latest_caom: False
   use_file_names: True
   use_urls: False
