@@ -633,16 +633,24 @@ def _get_uris(args):
     return result
 
 
+def to_caom2():
+    """This function is called by pipeline execution. It must have this name.
+    """
+    args = get_gen_proc_arg_parser().parse_args()
+    uris = _get_uris(args)
+    blueprints = _build_blueprints(uris)
+    result = gen_proc(args, blueprints)
+    logging.debug(f'Done {APPLICATION} processing with result {result}.')
+    return result
+
+
 def neossat_main_app():
     args = get_gen_proc_arg_parser().parse_args()
     try:
-        uris = _get_uris(args)
-        blueprints = _build_blueprints(uris)
-        gen_proc(args, blueprints)
+        result = to_caom2()
+        sys.exit(result)
     except Exception as e:
         logging.error('Failed {} execution for {}.'.format(APPLICATION, args))
         tb = traceback.format_exc()
         logging.debug(tb)
         sys.exit(-1)
-
-    logging.debug('Done {} processing.'.format(APPLICATION))
