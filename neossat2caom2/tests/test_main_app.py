@@ -70,7 +70,7 @@ import pytest
 
 from mock import patch
 
-from neossat2caom2 import neossat_main_app, NEOSSatName, APPLICATION
+from neossat2caom2 import main_app, NEOSSatName, APPLICATION
 from neossat2caom2 import COLLECTION, ARCHIVE
 from caom2.diff import get_differences
 from caom2pipe import manage_composable as mc
@@ -115,7 +115,6 @@ def test_main_app(test_name):
     output_file = '{}/{}.actual.xml'.format(TEST_DATA_DIR, basename)
     obs_path = '{}/{}'.format(TEST_DATA_DIR, '{}.expected.xml'.format(
         neos_name.obs_id))
-    expected = mc.read_obs_from_file(obs_path)
 
     with patch('caom2utils.fits2caom2.CadcDataClient') as data_client_mock:
         def get_file_info(archive, file_id):
@@ -129,15 +128,11 @@ def test_main_app(test_name):
                     test_name, output_file, PLUGIN, PLUGIN,
                     _get_lineage(test_name))).split()
         print(sys.argv)
-        neossat_main_app()
+        main_app.to_caom2()
 
-    actual = mc.read_obs_from_file(output_file)
-    result = get_differences(expected, actual, 'Observation')
-    if result:
-        msg = 'Differences found in observation {} test name {}\n{}'. \
-            format(expected.observation_id, test_name, '\n'.join(
-            [r for r in result]))
-        raise AssertionError(msg)
+    compare_result = mc.compare_observations(output_file, obs_path)
+    if compare_result is not None:
+        raise AssertionError(compare_result)
     # assert False  # cause I want to see logging messages
 
 

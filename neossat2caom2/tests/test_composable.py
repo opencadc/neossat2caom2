@@ -67,11 +67,11 @@
 # ***********************************************************************
 #
 import os
-import sys
 
 from datetime import datetime, timedelta
 from mock import patch, Mock
 
+from caom2 import SimpleObservation
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import composable, APPLICATION, NEOSSatName, NEOS_BOOKMARK
 from neossat2caom2 import scrape
@@ -83,10 +83,6 @@ START_TIME = datetime.utcnow()
 TEST_START_TIME = (START_TIME - timedelta(days=2)).isoformat()
 TEST_TIMESTAMP_1 = (START_TIME - timedelta(days=1)).timestamp()
 TEST_TIMESTAMP_2 = (START_TIME - timedelta(hours=12)).timestamp()
-
-
-class MyExitError(Exception):
-    pass
 
 
 TEST_FILE_LIST = [
@@ -113,22 +109,29 @@ TEST_FILE_LIST = [
 ]
 
 
-def test_run_state():
+@patch('caom2pipe.execute_composable.OrganizeExecutesWithDoOne.do_one')
+@patch('neossat2caom2.scrape._append_todo')
+def test_run_state(query_mock, run_mock):
     _write_state(TEST_START_TIME)
-    # execution
-    with patch('neossat2caom2.scrape._append_todo') as query_mock, \
-            patch('caom2pipe.execute_composable._do_one') as run_mock:
-        query_mock.side_effect = _append_todo_mock
-        getcwd_orig = os.getcwd
-        os.getcwd = Mock(return_value=TEST_DATA_DIR)
-        try:
-            sys.argv = ['test_command']
-            composable._run_state()
-            _check_execution(run_mock)
-        except Exception as e:
-            assert False, 'unexpected exception'
-        finally:
-            os.getcwd = getcwd_orig
+    query_mock.side_effect = _append_todo_mock
+    run_mock.return_value = 0
+    getcwd_orig = os.getcwd
+    os.getcwd = Mock(return_value=TEST_DATA_DIR)
+    try:
+        test_result = composable._run_state()
+        assert test_result == 0, 'expected successful test result'
+        assert run_mock.called, 'should be called'
+        args, kwargs = run_mock.call_args
+        test_storage = args[0]
+        assert isinstance(test_storage, NEOSSatName), type(test_storage)
+        assert (test_storage.file_name.startswith('NEOS_SCI') and
+                test_storage.file_name.endswith('.fits')), \
+            test_storage.file_name
+        assert run_mock.call_count == 10, 'wrong call count'
+    except Exception as e:
+        assert False, 'unexpected exception'
+    finally:
+        os.getcwd = getcwd_orig
 
 
 @patch('caom2pipe.execute_composable.CAOM2RepoClient')
@@ -197,7 +200,6 @@ def _write_todo():
 
 
 def _mock_repo_read(collection, obs_id):
-    from caom2 import SimpleObservation
     return SimpleObservation(collection=collection, observation_id=obs_id)
 
 

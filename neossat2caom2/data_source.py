@@ -68,25 +68,39 @@
 #
 
 import logging
+from datetime import datetime
+from astropy.table import Table
+from caom2pipe import data_source_composable as dsc
 
-from caom2pipe import name_builder_composable as nbc
-from neossat2caom2 import main_app
-
-__all__ = ['NEOSSatBuilder']
+__all__ = ['IncrementalSource']
 
 
-class NEOSSatBuilder(nbc.StorageNameBuilder):
+class IncrementalSource(dsc.DataSource):
 
-    def __init__(self):
-        super(NEOSSatBuilder, self).__init__()
+    def __init__(self, todo_list):
+        super(IncrementalSource, self).__init__()
+        self._todo_list = todo_list
         self._logger = logging.getLogger(__name__)
 
-    def build(self, entry):
+    def get_time_box_work(self, prev_exec_time, exec_time):
         """
+        Time-boxing the file list returned from the site scrape, where the
+        list is a dict, with keys the entries to retrieve, and values are the
+        timestamp associated with the respective entry.
 
-        :param entry: an entry is a file name, or an ftp url that points
-            to a file name
-        :return:
+        :param prev_exec_time datetime start of the timestamp chunk
+        :param exec_time datetime end of the timestamp chunk
+        :return: a list of file names with time they were modified at CSA,
+            structured as an astropy Table. The time format is ISO 8601.
         """
-        self._logger.debug(f'Build a StorageName instance for {entry}.')
-        return main_app.NEOSSatName(file_name=entry)
+        self._logger.debug('Entering get_time_box_work')
+        entries = Table(names=('fileName', 'ingestDate'),
+                        dtype=('S128', 'S32'))
+        prev_ts = prev_exec_time.timestamp()
+        exec_ts = exec_time.timestamp()
+
+        for entry, timestamp in self._todo_list.items():
+            if prev_ts < timestamp <= exec_ts:
+                temp = datetime.fromtimestamp(timestamp).isoformat()
+                entries.add_row((entry, temp))
+        return entries
