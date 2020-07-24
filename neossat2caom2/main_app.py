@@ -84,7 +84,7 @@ from caom2pipe import manage_composable as mc
 
 
 __all__ = ['neossat_main_app', 'update', 'NEOSSatName', 'COLLECTION',
-           'APPLICATION', 'ARCHIVE']
+           'APPLICATION', 'ARCHIVE', 'to_caom2']
 
 
 APPLICATION = 'neossat2caom2'
@@ -479,6 +479,7 @@ def update(observation, **kwargs):
                             _build_chunk_energy(chunk, headers)
                             _build_chunk_position(
                                 chunk, headers, observation.observation_id)
+                            chunk.time_axis = None
                 for part in temp_parts.values():
                     artifact.parts.add(part)
         logging.debug('Done update.')
@@ -523,7 +524,6 @@ def _build_chunk_energy(chunk, headers):
                              bandpass_name=filter_name,
                              resolving_power=resolving_power)
         chunk.energy = energy
-        chunk.energy_axis = 4
 
 
 def _build_chunk_position(chunk, headers, obs_id):
@@ -540,6 +540,7 @@ def _build_chunk_position(chunk, headers, obs_id):
     dec = get_dec(header)
     if ra is None or dec is None:
         logging.warning(f'No position information for {obs_id}')
+        chunk.naxis = None
     else:
         header['CTYPE1'] = 'RA---TAN'
         header['CTYPE2'] = 'DEC--TAN'
