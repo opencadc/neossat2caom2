@@ -84,7 +84,7 @@ from caom2pipe import manage_composable as mc
 
 
 __all__ = ['neossat_main_app', 'update', 'NEOSSatName', 'COLLECTION',
-           'APPLICATION', 'ARCHIVE']
+           'APPLICATION', 'ARCHIVE', 'to_caom2']
 
 
 APPLICATION = 'neossat2caom2'
@@ -479,6 +479,7 @@ def update(observation, **kwargs):
                             _build_chunk_energy(chunk, headers)
                             _build_chunk_position(
                                 chunk, headers, observation.observation_id)
+                            chunk.time_axis = None
                 for part in temp_parts.values():
                     artifact.parts.add(part)
         logging.debug('Done update.')
@@ -523,7 +524,6 @@ def _build_chunk_energy(chunk, headers):
                              bandpass_name=filter_name,
                              resolving_power=resolving_power)
         chunk.energy = energy
-        chunk.energy_axis = 4
 
 
 def _build_chunk_position(chunk, headers, obs_id):
@@ -540,6 +540,7 @@ def _build_chunk_position(chunk, headers, obs_id):
     dec = get_dec(header)
     if ra is None or dec is None:
         logging.warning(f'No position information for {obs_id}')
+        chunk.naxis = None
     else:
         header['CTYPE1'] = 'RA---TAN'
         header['CTYPE2'] = 'DEC--TAN'
@@ -633,16 +634,24 @@ def _get_uris(args):
     return result
 
 
+def to_caom2():
+    """This function is called by pipeline execution. It must have this name.
+    """
+    args = get_gen_proc_arg_parser().parse_args()
+    uris = _get_uris(args)
+    blueprints = _build_blueprints(uris)
+    result = gen_proc(args, blueprints)
+    logging.debug(f'Done {APPLICATION} processing with result {result}.')
+    return result
+
+
 def neossat_main_app():
     args = get_gen_proc_arg_parser().parse_args()
     try:
-        uris = _get_uris(args)
-        blueprints = _build_blueprints(uris)
-        gen_proc(args, blueprints)
+        result = to_caom2()
+        sys.exit(result)
     except Exception as e:
         logging.error('Failed {} execution for {}.'.format(APPLICATION, args))
         tb = traceback.format_exc()
         logging.debug(tb)
         sys.exit(-1)
-
-    logging.debug('Done {} processing.'.format(APPLICATION))

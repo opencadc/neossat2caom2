@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2020.                            (c) 2020.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -66,87 +66,41 @@
 #
 # ***********************************************************************
 #
-import pytest
 
-from mock import patch
+import logging
+from datetime import datetime
+from astropy.table import Table
+from caom2pipe import data_source_composable as dsc
 
-from neossat2caom2 import main_app, NEOSSatName, APPLICATION
-from neossat2caom2 import COLLECTION, ARCHIVE
-from caom2.diff import get_differences
-from caom2pipe import manage_composable as mc
-
-import os
-import sys
-
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
-PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
+__all__ = ['IncrementalSource']
 
 
-LOOKUP = {'2019213173800': ['NEOS_SCI_2019213173800',
-                            'NEOS_SCI_2019213173800_cor',
-                            'NEOS_SCI_2019213173800_cord'],
-          '2019258000140': ['NEOS_SCI_2019258000140',
-                            'NEOS_SCI_2019258000140_clean'],
-          '2019259111450': ['NEOS_SCI_2019259111450',
-                            'NEOS_SCI_2019259111450_clean'],
-          '2019213174531': ['NEOS_SCI_2019213174531',
-                            'NEOS_SCI_2019213174531_cor',
-                            'NEOS_SCI_2019213174531_cord'],
-          '2019213215700': ['NEOS_SCI_2019213215700',
-                            'NEOS_SCI_2019213215700_cor',
-                            'NEOS_SCI_2019213215700_cord'],
-          # dark
-          '2019267234420': ['NEOS_SCI_2019267234420_clean'],
-          # no RA, DEC keywords
-          '2015347015200': ['NEOS_SCI_2015347015200_clean']}
+class IncrementalSource(dsc.DataSource):
 
+    def __init__(self, todo_list):
+        super(IncrementalSource, self).__init__()
+        self._todo_list = todo_list
+        self._logger = logging.getLogger(__name__)
 
-def pytest_generate_tests(metafunc):
-    obs_id_list = []
-    for ii in LOOKUP:
-        obs_id_list.append(ii)
-    metafunc.parametrize('test_name', obs_id_list)
+    def get_time_box_work(self, prev_exec_time, exec_time):
+        """
+        Time-boxing the file list returned from the site scrape, where the
+        list is a dict, with keys the entries to retrieve, and values are the
+        timestamp associated with the respective entry.
 
+        :param prev_exec_time datetime start of the timestamp chunk
+        :param exec_time datetime end of the timestamp chunk
+        :return: a list of file names with time they were modified at CSA,
+            structured as an astropy Table. The time format is ISO 8601.
+        """
+        self._logger.debug('Entering get_time_box_work')
+        entries = Table(names=('fileName', 'ingestDate'),
+                        dtype=('S128', 'S32'))
+        prev_ts = prev_exec_time.timestamp()
+        exec_ts = exec_time.timestamp()
 
-def test_main_app(test_name):
-    basename = os.path.basename(test_name)
-    neos_name = NEOSSatName(file_name=basename)
-    output_file = '{}/{}.actual.xml'.format(TEST_DATA_DIR, basename)
-    obs_path = '{}/{}'.format(TEST_DATA_DIR, '{}.expected.xml'.format(
-        neos_name.obs_id))
-
-    with patch('caom2utils.fits2caom2.CadcDataClient') as data_client_mock:
-        def get_file_info(archive, file_id):
-            return {'type': 'application/fits'}
-
-        data_client_mock.return_value.get_file_info.side_effect = get_file_info
-        sys.argv = \
-            ('{} --no_validate --local {} --observation {} {} -o {} '
-             '--plugin {} --module {} --lineage {}'.
-             format(APPLICATION, _get_local(test_name), COLLECTION,
-                    test_name, output_file, PLUGIN, PLUGIN,
-                    _get_lineage(test_name))).split()
-        print(sys.argv)
-        main_app.to_caom2()
-
-    compare_result = mc.compare_observations(output_file, obs_path)
-    if compare_result is not None:
-        raise AssertionError(compare_result)
-    # assert False  # cause I want to see logging messages
-
-
-def _get_lineage(obs_id):
-    result = ''
-    for ii in LOOKUP[obs_id]:
-        product_id = NEOSSatName.extract_product_id(ii)
-        fits = mc.get_lineage(ARCHIVE, product_id, '{}.fits'.format(ii))
-        result = '{} {}'.format(result, fits)
-    return result
-
-
-def _get_local(obs_id):
-    result = ''
-    for ii in LOOKUP[obs_id]:
-        result = '{} {}/{}.fits.header'.format(result, TEST_DATA_DIR, ii)
-    return result
+        for entry, timestamp in self._todo_list.items():
+            if prev_ts < timestamp <= exec_ts:
+                temp = datetime.fromtimestamp(timestamp).isoformat()
+                entries.add_row((entry, temp))
+        return entries

@@ -67,11 +67,11 @@
 # ***********************************************************************
 #
 import os
-import sys
 
 from datetime import datetime, timedelta
 from mock import patch, Mock
 
+from caom2 import SimpleObservation
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import composable, APPLICATION, NEOSSatName, NEOS_BOOKMARK
 from neossat2caom2 import scrape
@@ -83,10 +83,6 @@ START_TIME = datetime.utcnow()
 TEST_START_TIME = (START_TIME - timedelta(days=2)).isoformat()
 TEST_TIMESTAMP_1 = (START_TIME - timedelta(days=1)).timestamp()
 TEST_TIMESTAMP_2 = (START_TIME - timedelta(hours=12)).timestamp()
-
-
-class MyExitError(Exception):
-    pass
 
 
 TEST_FILE_LIST = [
@@ -113,37 +109,53 @@ TEST_FILE_LIST = [
 ]
 
 
-def test_run_state():
+@patch('caom2pipe.execute_composable.OrganizeExecutesWithDoOne.do_one')
+@patch('neossat2caom2.scrape._append_todo')
+def test_run_state(query_mock, run_mock):
     _write_state(TEST_START_TIME)
-    # execution
-    with patch('neossat2caom2.scrape._append_todo') as query_mock, \
-            patch('caom2pipe.execute_composable._do_one') as run_mock:
-        query_mock.side_effect = _append_todo_mock
-        getcwd_orig = os.getcwd
-        os.getcwd = Mock(return_value=TEST_DATA_DIR)
-        try:
-            sys.argv = ['test_command']
-            composable._run_state()
-            _check_execution(run_mock)
-        except Exception as e:
-            assert False, 'unexpected exception'
-        finally:
-            os.getcwd = getcwd_orig
+    query_mock.side_effect = _append_todo_mock
+    run_mock.return_value = 0
+    getcwd_orig = os.getcwd
+    os.getcwd = Mock(return_value=TEST_DATA_DIR)
+    try:
+        test_result = composable._run_state()
+        assert test_result == 0, 'expected successful test result'
+        assert run_mock.called, 'should be called'
+        args, kwargs = run_mock.call_args
+        test_storage = args[0]
+        assert isinstance(test_storage, NEOSSatName), type(test_storage)
+        assert (test_storage.file_name.startswith('NEOS_SCI') and
+                test_storage.file_name.endswith('.fits')), \
+            test_storage.file_name
+        assert run_mock.call_count == 10, 'wrong call count'
+    except Exception as e:
+        assert False, 'unexpected exception'
+    finally:
+        os.getcwd = getcwd_orig
 
 
-def test_run_by_file():
-    with patch('caom2pipe.execute_composable._do_one') as run_mock:
-        getcwd_orig = os.getcwd
-        os.getcwd = Mock(return_value=TEST_DATA_DIR)
-        try:
-            _write_todo()
-            sys.argv = ['test_command']
-            composable._run()
-            _check_execution(run_mock)
-        except Exception as e:
-            assert False, 'unexpected exception'
-        finally:
-            os.getcwd = getcwd_orig
+@patch('caom2pipe.execute_composable.CAOM2RepoClient')
+@patch('caom2pipe.execute_composable.CadcDataClient')
+def test_run_by_file(data_client_mock, repo_mock):
+    repo_mock.return_value.read.side_effect = _mock_repo_read
+    repo_mock.return_value.create.side_effect = Mock()
+    repo_mock.return_value.update.side_effect = _mock_repo_update
+    data_client_mock.return_value.get_file_info.side_effect = \
+        _mock_get_file_info
+    getcwd_orig = os.getcwd
+    os.getcwd = Mock(return_value=TEST_DATA_DIR)
+    try:
+        _write_todo()
+        test_result = composable._run()
+        assert test_result == 0, 'wrong result'
+        # ClientVisit executor only with the test configuration
+        assert repo_mock.return_value.update.called, 'expect update mock call'
+        assert repo_mock.return_value.update.call_count == 10, \
+            'wrong number of mock calls'
+    except Exception as e:
+        assert False, 'unexpected exception'
+    finally:
+        os.getcwd = getcwd_orig
 
 
 def _append_todo_mock(ignore1, ignore2, ignore3, ignore4, ignore5, ignore6):
@@ -185,3 +197,18 @@ def _write_todo():
     with open(test_config.work_fqn, 'w') as f:
         for f_name in TEST_FILE_LIST:
             f.write('{}\n'.format(f_name))
+
+
+def _mock_repo_read(collection, obs_id):
+    return SimpleObservation(collection=collection, observation_id=obs_id)
+
+
+def _mock_repo_update(ignore1):
+    return None
+
+
+def _mock_get_file_info(archive, file_id):
+    if '_prev' in file_id:
+        return {'type': 'image/jpeg'}
+    else:
+        return {'type': 'application/fits'}
