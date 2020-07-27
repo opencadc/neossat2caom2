@@ -48,6 +48,7 @@ In an empty directory (the 'working directory'), on a machine with Docker instal
    task_types:
      - ingest_obs
    features:
+     supports_composite: False
      use_file_names: False
      use_urls: False
    ```
