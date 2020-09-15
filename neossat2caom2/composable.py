@@ -83,10 +83,7 @@ from datetime import datetime
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 from caom2pipe import run_composable as rc
-<<<<<<< HEAD
 from caom2pipe import transfer_composable as tc
-=======
->>>>>>> s2770 - initial build of the initial collection.
 from neossat2caom2 import APPLICATION, preview_augmentation
 from neossat2caom2 import scrape, data_source, NEOSSatName
 
