@@ -405,6 +405,8 @@ def accumulate_bp(bp, uri):
     bp.add_fits_attribute('Observation.proposal.id', 'PROP_ID')
     bp.clear('Observation.proposal.pi')
     bp.add_fits_attribute('Observation.proposal.pi', 'PI_NAME')
+    bp.clear('Observation.proposal.title')
+    bp.add_fits_attribute('Observation.proposal.title', 'TITLE')
 
     bp.clear('Plane.metaRelease')
     bp.add_fits_attribute('Plane.metaRelease', 'DATE-OBS')
