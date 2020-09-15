@@ -99,7 +99,9 @@ LOOKUP = {'2019213173800': ['NEOS_SCI_2019213173800',
           # dark
           '2019267234420': ['NEOS_SCI_2019267234420_clean'],
           # no RA, DEC keywords
-          '2015347015200': ['NEOS_SCI_2015347015200_clean']}
+          '2015347015200': ['NEOS_SCI_2015347015200_clean'],
+          # PI Name
+          '2020255152013': ['NEOS_SCI_2020255152013_clean']}
 
 
 def pytest_generate_tests(metafunc):
