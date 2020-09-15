@@ -83,24 +83,18 @@ from neossat2caom2 import ARCHIVE, NEOSSatName
 def visit(observation, **kwargs):
     mc.check_param(observation, Observation)
 
-    working_dir = './'
-    if 'working_directory' in kwargs:
-        working_dir = kwargs['working_directory']
-    if 'cadc_client' in kwargs:
-        cadc_client = kwargs['cadc_client']
-    else:
-        raise mc.CadcException('Visitor needs a cadc_client parameter.')
-    if 'stream' in kwargs:
-        stream = kwargs['stream']
-    else:
+    working_dir = kwargs.get('working_directory', './')
+    cadc_client = kwargs.get('cadc_client')
+    if cadc_client is None:
+        logging.warning(
+            'Visitor needs a cadc_client parameter to store images.')
+    stream = kwargs.get('stream')
+    if stream is None:
         raise mc.CadcException('Visitor needs a stream parameter.')
-    if 'observable' in kwargs:
-        observable = kwargs['observable']
-    else:
+    observable = kwargs.get('observable')
+    if observable is None:
         raise mc.CadcException('Visitor needs a observable parameter.')
-    science_file = None
-    if 'science_file' in kwargs:
-        science_file = kwargs.get('science_file')
+    science_file = kwargs.get('science_file')
 
     count = 0
     for plane in observation.planes.values():
@@ -155,10 +149,11 @@ def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
 
 def _store_smalls(cadc_client, working_directory, preview_fname,
                   thumb_fname, metrics, stream):
-    mc.data_put(cadc_client, working_directory, preview_fname, ARCHIVE,
-                stream, mime_type='image/png', metrics=metrics)
-    mc.data_put(cadc_client, working_directory, thumb_fname, ARCHIVE, stream,
-                mime_type='image/png', metrics=metrics)
+    if cadc_client is not None:
+        mc.data_put(cadc_client, working_directory, preview_fname, ARCHIVE,
+                    stream, mime_type='image/png', metrics=metrics)
+        mc.data_put(cadc_client, working_directory, thumb_fname, ARCHIVE,
+                    stream, mime_type='image/png', metrics=metrics)
 
 
 def _generate_plot(fqn, dpi_factor, image_data, image_header):
