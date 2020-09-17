@@ -100,7 +100,8 @@ class NEOSSatName(mc.StorageName):
 
     BLANK_NAME_PATTERN = '*'
 
-    def __init__(self, obs_id=None, fname_on_disk=None, file_name=None):
+    def __init__(self, obs_id=None, fname_on_disk=None, file_name=None,
+                 entry=None):
         if obs_id is not None:
             fname_on_disk = 'NEOS_SCI_{}.fits'.format(obs_id)
         elif file_name is not None:
@@ -114,7 +115,7 @@ class NEOSSatName(mc.StorageName):
         self._file_name = fname_on_disk.replace('.header', '')
         super(NEOSSatName, self).__init__(
             obs_id, COLLECTION, NEOSSatName.BLANK_NAME_PATTERN, fname_on_disk,
-            archive=ARCHIVE)
+            archive=ARCHIVE, entry=entry)
         logging.debug('obs id {} file name {}'.format(
             self._obs_id, self._file_name))
 

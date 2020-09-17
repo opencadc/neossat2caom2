@@ -5,7 +5,6 @@ RUN pip install cadcdata \
   caom2 \
   caom2repo \
   caom2utils \
-  deprecated \
   ftputil \
   importlib-metadata \
   pytz \
