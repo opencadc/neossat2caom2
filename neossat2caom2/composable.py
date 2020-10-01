@@ -83,6 +83,7 @@ from datetime import datetime
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 from caom2pipe import run_composable as rc
+from caom2pipe import transfer_composable as tc
 from neossat2caom2 import APPLICATION, preview_augmentation
 from neossat2caom2 import scrape, data_source, NEOSSatName
 
@@ -100,9 +101,15 @@ def _run():
         is used by airflow for task instance management and reporting.
     """
     builder = nbc.FileNameBuilder(NEOSSatName)
-    return rc.run_by_todo(name_builder=builder, command_name=APPLICATION,
+    config = mc.Config()
+    config.get_executors()
+    transferrer = tc.FtpTransfer(config.data_source)
+    return rc.run_by_todo(name_builder=builder,
+                          config=config,
+                          command_name=APPLICATION,
                           meta_visitors=META_VISITORS,
-                          data_visitors=DATA_VISITORS)
+                          data_visitors=DATA_VISITORS,
+                          transferrer=transferrer)
 
 
 def run():
@@ -134,13 +141,15 @@ def _run_state():
         temp, config.working_directory, config.state_fqn)
     max_date = datetime.fromtimestamp(max_timestamp)
     incremental_source = data_source.IncrementalSource(todo_list)
+    transferrer = tc.FtpTransfer(config.data_source)
     return rc.run_by_state(config=config, name_builder=builder,
                            command_name=APPLICATION,
                            bookmark_name=NEOS_BOOKMARK,
                            meta_visitors=META_VISITORS,
                            data_visitors=DATA_VISITORS,
                            end_time=max_date, chooser=None,
-                           source=incremental_source)
+                           source=incremental_source,
+                           transferrer=transferrer)
 
 
 def run_state():
