@@ -52,7 +52,7 @@ rejected_directory: /usr/src/app/rejected
 #
 state_file_name: state.yml
 interval: 600
-source_host: ftp.asc-csa.gc.ca
+data_source: ftp.asc-csa.gc.ca
 # how to control the work that gets done
 # possible values are:
 # - scrape - read the headers, write out the xml - kind of a test mode
@@ -61,7 +61,7 @@ source_host: ftp.asc-csa.gc.ca
 # - modify - create a footprint and previews for an existing CAOM model record
 # - pull - put a file retrieved from a URL
 task_types: 
-  - pull
+  - store
   - ingest
   - modify
 features:
