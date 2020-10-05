@@ -66,12 +66,14 @@
 #
 # ***********************************************************************
 #
+
 import os
 
 from datetime import datetime, timedelta
 from mock import patch, Mock
 
 from caom2 import SimpleObservation
+from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
 from neossat2caom2 import composable, APPLICATION, NEOSSatName, NEOS_BOOKMARK
 from neossat2caom2 import scrape
@@ -156,6 +158,34 @@ def test_run_by_file(data_client_mock, repo_mock):
         assert False, 'unexpected exception'
     finally:
         os.getcwd = getcwd_orig
+
+
+@patch('caom2pipe.manage_composable.data_put')
+def test_store(put_mock):
+    test_config = mc.Config()
+    test_config.logging_level = 'ERROR'
+    test_config.working_directory = '/tmp'
+    test_fqn = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/' \
+               '268/NEOS_SCI_2019268004930_clean.fits'
+    test_storage_name = NEOSSatName(file_name=test_fqn, entry=test_fqn)
+    transferrer = Mock()
+    cred_param = Mock()
+    cadc_data_client = Mock()
+    caom_repo_client = Mock()
+    observable = mc.Observable(
+        mc.Rejected('/tmp/rejected.yml'), mc.Metrics(test_config))
+    test_subject = ec.Store(test_config, test_storage_name, APPLICATION,
+                            cred_param, cadc_data_client, caom_repo_client,
+                            observable, transferrer)
+    test_subject.execute(None)
+    assert put_mock.called, 'expect a call'
+    args, kwargs = put_mock.call_args
+    assert args[2] == test_storage_name.file_name, 'wrong file name'
+    assert transferrer.get.called, 'expect a transfer call'
+    args, kwargs = transferrer.get.call_args
+    assert args[0] == test_fqn, 'wrong source parameter'
+    assert args[1] == f'/tmp/{test_storage_name.file_name}', \
+        'wrong destination parameter'
 
 
 def _append_todo_mock(ignore1, ignore2, ignore3, ignore4, ignore5, ignore6):
