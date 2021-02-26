@@ -75,7 +75,7 @@ def test_is_valid():
 
 def test_storage_name():
     for f_name in ['NEOS_SCI_2019213173800_cord.fits',
-                   'NEOS_SCI_2019213173800_cor.fits',
+                   'NEOS_SCI_2019213173800_cor.fits.gz',
                    'NEOS_SCI_2019213173800.fits']:
         test_sub = NEOSSatName(file_name=f_name)
         assert test_sub.obs_id == '2019213173800'

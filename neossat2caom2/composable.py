@@ -109,7 +109,7 @@ def _run():
                           command_name=APPLICATION,
                           meta_visitors=META_VISITORS,
                           data_visitors=DATA_VISITORS,
-                          transferrer=transferrer)
+                          store_transfer=transferrer)
 
 
 def run():
@@ -149,7 +149,7 @@ def _run_state():
                            data_visitors=DATA_VISITORS,
                            end_time=max_date, chooser=None,
                            source=incremental_source,
-                           transferrer=transferrer)
+                           store_transfer=transferrer)
 
 
 def run_state():

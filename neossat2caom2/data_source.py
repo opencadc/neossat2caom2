@@ -68,8 +68,6 @@
 #
 
 import logging
-from datetime import datetime
-from astropy.table import Table
 from caom2pipe import data_source_composable as dsc
 
 __all__ = ['IncrementalSource']
@@ -94,13 +92,9 @@ class IncrementalSource(dsc.DataSource):
             structured as an astropy Table. The time format is ISO 8601.
         """
         self._logger.debug('Entering get_time_box_work')
-        entries = Table(names=('fileName', 'ingestDate'),
-                        dtype=('S128', 'S32'))
-        prev_ts = prev_exec_time.timestamp()
-        exec_ts = exec_time.timestamp()
 
+        temp = []
         for entry, timestamp in self._todo_list.items():
-            if prev_ts < timestamp <= exec_ts:
-                temp = datetime.fromtimestamp(timestamp).isoformat()
-                entries.add_row((entry, temp))
-        return entries
+            if prev_exec_time < timestamp <= exec_time:
+                temp.append(dsc.StateRunnerMeta(entry, timestamp))
+        return temp

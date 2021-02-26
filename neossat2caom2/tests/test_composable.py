@@ -111,7 +111,7 @@ TEST_FILE_LIST = [
 ]
 
 
-@patch('caom2pipe.execute_composable.OrganizeExecutesWithDoOne.do_one')
+@patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
 @patch('neossat2caom2.scrape._append_todo')
 def test_run_state(query_mock, run_mock):
     _write_state(TEST_START_TIME)
@@ -131,6 +131,9 @@ def test_run_state(query_mock, run_mock):
             test_storage.file_name
         assert run_mock.call_count == 10, 'wrong call count'
     except Exception as e:
+        import traceback
+        import logging
+        logging.error(traceback.format_exc())
         assert False, 'unexpected exception'
     finally:
         os.getcwd = getcwd_orig
@@ -183,8 +186,11 @@ def test_store(put_mock):
     assert args[2] == test_storage_name.file_name, 'wrong file name'
     assert transferrer.get.called, 'expect a transfer call'
     args, kwargs = transferrer.get.call_args
+    import logging
+    logging.error(args)
     assert args[0] == test_fqn, 'wrong source parameter'
-    assert args[1] == f'/tmp/{test_storage_name.file_name}', \
+    assert args[1] == f'/tmp/{test_storage_name.obs_id}/' \
+                      f'{test_storage_name.file_name}', \
         'wrong destination parameter'
 
 

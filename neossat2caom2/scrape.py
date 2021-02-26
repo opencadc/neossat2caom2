@@ -91,8 +91,8 @@ NEOS_CONTEXT = 'neossat_context'
 
 def _append_source_listing(start_date, sidecar_dir, current):
     """Recursively visit directories at the ftp site, looking for .fits
-    files. If the file modification time is >= start_date, that file
-    is a candidate for transfer.
+    or .fits.gz files. If the file modification time is >= start_date, that
+    file is a candidate for transfer.
 
     Use two local files as a cache of listing information, for better
     repeatability. The first file is a list of the directories that have
@@ -138,7 +138,7 @@ def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
                         # True - it's a directory, follow it down later
                         if entry_fqn not in original_dirs_list:
                             listing[entry_fqn] = [True, entry_stats.st_mtime]
-                    elif entry.endswith('.fits'):
+                    elif entry.endswith('.fits') or entry.endswith('.fits.gz'):
                         # False - it's a file, just leave it in the list
                         listing[entry_fqn] = [False, entry_stats.st_mtime]
                         logging.debug(f'Adding entry {entry_fqn}')

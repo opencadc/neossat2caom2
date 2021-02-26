@@ -2,7 +2,7 @@
 
 if [[ ! -e ${PWD}/config.yml ]]
 then
-  cp /config.yml ${PWD}
+  cp /usr/local/bin/config.yml ${PWD}
 fi
 
 if [[ ! -e ${PWD}/state.yml ]]; then
@@ -13,7 +13,7 @@ if [[ ! -e ${PWD}/state.yml ]]; then
       last_record: $yesterday
 " > ${PWD}/state.yml
   else
-    cp /state.yml ${PWD}
+    cp /usr/local/bin/state.yml ${PWD}
   fi
 fi
 

@@ -148,7 +148,8 @@ class NEOSSatName(mc.StorageName):
 
     @staticmethod
     def remove_extensions(value):
-        return value.replace('.fits', '').replace('.header', '')
+        return value.replace('.fits', '').replace('.header', '').replace(
+            '.gz', '')
 
     @staticmethod
     def extract_obs_id(value):
