@@ -104,12 +104,14 @@ def _run():
     config = mc.Config()
     config.get_executors()
     transferrer = tc.FtpTransfer(config.data_source)
-    return rc.run_by_todo(name_builder=builder,
-                          config=config,
-                          command_name=APPLICATION,
-                          meta_visitors=META_VISITORS,
-                          data_visitors=DATA_VISITORS,
-                          store_transfer=transferrer)
+    return rc.run_by_todo(
+        name_builder=builder,
+        config=config,
+        command_name=APPLICATION,
+        meta_visitors=META_VISITORS,
+        data_visitors=DATA_VISITORS,
+        store_transfer=transferrer,
+    )
 
 
 def run():
@@ -138,18 +140,23 @@ def _run_state():
     start_time = state.get_bookmark(NEOS_BOOKMARK)
     temp = mc.increment_time(start_time, 0).timestamp()
     todo_list, max_timestamp = scrape.build_todo(
-        temp, config.working_directory, config.state_fqn)
+        temp, config.working_directory, config.state_fqn
+    )
     max_date = datetime.fromtimestamp(max_timestamp)
     incremental_source = data_source.IncrementalSource(todo_list)
     transferrer = tc.FtpTransfer(config.data_source)
-    return rc.run_by_state(config=config, name_builder=builder,
-                           command_name=APPLICATION,
-                           bookmark_name=NEOS_BOOKMARK,
-                           meta_visitors=META_VISITORS,
-                           data_visitors=DATA_VISITORS,
-                           end_time=max_date, chooser=None,
-                           source=incremental_source,
-                           store_transfer=transferrer)
+    return rc.run_by_state(
+        config=config,
+        name_builder=builder,
+        command_name=APPLICATION,
+        bookmark_name=NEOS_BOOKMARK,
+        meta_visitors=META_VISITORS,
+        data_visitors=DATA_VISITORS,
+        end_time=max_date,
+        chooser=None,
+        source=incremental_source,
+        store_transfer=transferrer,
+    )
 
 
 def run_state():

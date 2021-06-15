@@ -83,8 +83,15 @@ from caom2pipe import astro_composable as ac
 from caom2pipe import manage_composable as mc
 
 
-__all__ = ['neossat_main_app', 'update', 'NEOSSatName', 'COLLECTION',
-           'APPLICATION', 'ARCHIVE', 'to_caom2']
+__all__ = [
+    'neossat_main_app',
+    'update',
+    'NEOSSatName',
+    'COLLECTION',
+    'APPLICATION',
+    'ARCHIVE',
+    'to_caom2',
+]
 
 
 APPLICATION = 'neossat2caom2'
@@ -100,8 +107,9 @@ class NEOSSatName(mc.StorageName):
 
     BLANK_NAME_PATTERN = '*'
 
-    def __init__(self, obs_id=None, fname_on_disk=None, file_name=None,
-                 entry=None):
+    def __init__(
+        self, obs_id=None, fname_on_disk=None, file_name=None, entry=None
+    ):
         if obs_id is not None:
             fname_on_disk = 'NEOS_SCI_{}.fits'.format(obs_id)
         elif file_name is not None:
@@ -110,14 +118,21 @@ class NEOSSatName(mc.StorageName):
                 file_name = os.path.basename(file_name)
             fname_on_disk = file_name
             obs_id = NEOSSatName.remove_extensions(
-                NEOSSatName.extract_obs_id(file_name))
+                NEOSSatName.extract_obs_id(file_name)
+            )
             self._product_id = NEOSSatName.extract_product_id(file_name)
         self._file_name = fname_on_disk.replace('.header', '')
         super(NEOSSatName, self).__init__(
-            obs_id, COLLECTION, NEOSSatName.BLANK_NAME_PATTERN, fname_on_disk,
-            archive=ARCHIVE, entry=entry)
-        logging.debug('obs id {} file name {}'.format(
-            self._obs_id, self._file_name))
+            obs_id,
+            COLLECTION,
+            NEOSSatName.BLANK_NAME_PATTERN,
+            fname_on_disk,
+            archive=ARCHIVE,
+            entry=entry,
+        )
+        logging.debug(
+            'obs id {} file name {}'.format(self._obs_id, self._file_name)
+        )
 
     def is_valid(self):
         return True
@@ -148,13 +163,20 @@ class NEOSSatName(mc.StorageName):
 
     @staticmethod
     def remove_extensions(value):
-        return value.replace('.fits', '').replace('.header', '').replace(
-            '.gz', '')
+        return (
+            value.replace('.fits', '')
+            .replace('.header', '')
+            .replace('.gz', '')
+        )
 
     @staticmethod
     def extract_obs_id(value):
-        return value.replace('_clean', '').replace('NEOS_SCI_', '').replace(
-            '_cord', '').replace('_cor', '')
+        return (
+            value.replace('_clean', '')
+            .replace('NEOS_SCI_', '')
+            .replace('_cord', '')
+            .replace('_cor', '')
+        )
 
     @staticmethod
     def extract_product_id(value):
@@ -243,9 +265,9 @@ def get_obs_intent(header):
 
     result = 'calibration'
     mode = _get_mode(header)
-    if (mode is not None and
-            ('FINE_POINT' in mode or 'FINE_SLEW' in mode or
-             'FINE_HOLD' in mode)):
+    if mode is not None and (
+        'FINE_POINT' in mode or 'FINE_SLEW' in mode or 'FINE_HOLD' in mode
+    ):
         obs_type = get_obs_type(header)
         if obs_type != 'dark':
             result = 'science'
@@ -374,7 +396,7 @@ def _get_position(header):
 
 
 def accumulate_bp(bp, uri):
-    """Configure the telescope-specific ObsBlueprint at the CAOM model 
+    """Configure the telescope-specific ObsBlueprint at the CAOM model
     Observation level.
 
     Guidance for construction is available from this doc:
@@ -397,8 +419,9 @@ def accumulate_bp(bp, uri):
     bp.set_default('Observation.instrument.name', 'NEOSSat_Science')
     # DB 17-10-19
     # Set Observation.instrument.keywords to the value of the MODE keyword.
-    bp.set('Observation.instrument.keywords',
-           'get_instrument_keywords(header)')
+    bp.set(
+        'Observation.instrument.keywords', 'get_instrument_keywords(header)'
+    )
 
     bp.set('Observation.target.type', 'get_target_type(header)')
     bp.set('Observation.target.moving', 'get_target_moving(header)')
@@ -435,8 +458,10 @@ def accumulate_bp(bp, uri):
     bp.set('Chunk.time.axis.function.naxis', '1')
     bp.set('Chunk.time.axis.function.delta', 'get_time_delta(header)')
     bp.set('Chunk.time.axis.function.refCoord.pix', '0.5')
-    bp.set('Chunk.time.axis.function.refCoord.val',
-           'get_time_function_val(header)')
+    bp.set(
+        'Chunk.time.axis.function.refCoord.val',
+        'get_time_function_val(header)',
+    )
     bp.clear('Chunk.time.exposure')
     bp.add_fits_attribute('Chunk.time.exposure', 'EXPOSURE')
 
@@ -465,7 +490,9 @@ def update(observation, **kwargs):
     try:
         for plane in observation.planes.values():
             for artifact in plane.artifacts.values():
-                temp_parts = TypedOrderedDict(Part, )
+                temp_parts = TypedOrderedDict(
+                    Part,
+                )
                 # need to rename the BINARY TABLE extensions, which have
                 # differently telemetry, and remove their chunks
                 for part_key in ['1', '2', '3', '4', '5']:
@@ -484,7 +511,8 @@ def update(observation, **kwargs):
                             chunk.product_type = artifact.product_type
                             _build_chunk_energy(chunk, headers)
                             _build_chunk_position(
-                                chunk, headers, observation.observation_id)
+                                chunk, headers, observation.observation_id
+                            )
                             chunk.time_axis = None
                 for part in temp_parts.values():
                     artifact.parts.add(part)
@@ -523,12 +551,14 @@ def _build_chunk_energy(chunk, headers):
         wavelength = headers[0].get('WAVELENG', 6000)
         wl = wavelength / 1e4  # everything in microns
         resolving_power = wl / (max_wl - min_wl)
-        energy = SpectralWCS(axis=axis,
-                             specsys='TOPOCENT',
-                             ssyssrc='TOPOCENT',
-                             ssysobs='TOPOCENT',
-                             bandpass_name=filter_name,
-                             resolving_power=resolving_power)
+        energy = SpectralWCS(
+            axis=axis,
+            specsys='TOPOCENT',
+            ssyssrc='TOPOCENT',
+            ssysobs='TOPOCENT',
+            bandpass_name=filter_name,
+            resolving_power=resolving_power,
+        )
         chunk.energy = energy
 
 
@@ -582,19 +612,15 @@ def _build_chunk_position(chunk, headers, obs_id):
         cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2_rad)
         cd22 = cdelt2 * math.cos(crota2_rad)
 
-        dimension = Dimension2D(header.get('NAXIS1'),
-                                header.get('NAXIS2'))
-        x = RefCoord(get_position_axis_function_naxis1(header),
-                     get_ra(header))
-        y = RefCoord(get_position_axis_function_naxis2(header),
-                     get_dec(header))
+        dimension = Dimension2D(header.get('NAXIS1'), header.get('NAXIS2'))
+        x = RefCoord(get_position_axis_function_naxis1(header), get_ra(header))
+        y = RefCoord(
+            get_position_axis_function_naxis2(header), get_dec(header)
+        )
         ref_coord = Coord2D(x, y)
-        function = CoordFunction2D(dimension,
-                                   ref_coord,
-                                   cd11,
-                                   cd12,
-                                   cd21,
-                                   cd22)
+        function = CoordFunction2D(
+            dimension, ref_coord, cd11, cd12, cd21, cd22
+        )
         chunk.position.axis.function = function
         chunk.position_axis_1 = 1
         chunk.position_axis_2 = 2
@@ -636,13 +662,13 @@ def _get_uris(args):
             result.append(ii.split('/', 1)[1])
     else:
         raise mc.CadcException(
-            'Could not define uri from these args {}'.format(args))
+            'Could not define uri from these args {}'.format(args)
+        )
     return result
 
 
 def to_caom2():
-    """This function is called by pipeline execution. It must have this name.
-    """
+    """This function is called by pipeline execution. It must have this name."""
     args = get_gen_proc_arg_parser().parse_args()
     uris = _get_uris(args)
     blueprints = _build_blueprints(uris)

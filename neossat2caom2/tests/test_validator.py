@@ -83,10 +83,12 @@ def test_validator(ftp_mock, caps_mock, post_mock):
     caps_mock.return_value = 'https://sc2.canfar.net/sc2repo'
     response = Mock()
     response.status_code = 200
-    y = [b'uri\n'
-         b'ad:NEOSS/NEOS_SCI_2019213215700_cord.fits\n'
-         b'ad:NEOSS/NEOS_SCI_2019213215700_cor.fits\n'
-         b'ad:NEOSS/NEOS_SCI_2019213215700.fits\n']
+    y = [
+        b'uri\n'
+        b'ad:NEOSS/NEOS_SCI_2019213215700_cord.fits\n'
+        b'ad:NEOSS/NEOS_SCI_2019213215700_cor.fits\n'
+        b'ad:NEOSS/NEOS_SCI_2019213215700.fits\n'
+    ]
 
     x = [b'ingestDate,fileName\n']
 
@@ -105,10 +107,12 @@ def test_validator(ftp_mock, caps_mock, post_mock):
     post_mock.return_value.__enter__.return_value = response
 
     test_scrape._make_test_dirs()
-    ftp_mock.return_value.__enter__.return_value.listdir. \
-        side_effect = test_scrape._list_dirs
-    ftp_mock.return_value.__enter__.return_value.stat. \
-        side_effect = test_scrape._entry_stats
+    ftp_mock.return_value.__enter__.return_value.listdir.side_effect = (
+        test_scrape._list_dirs
+    )
+    ftp_mock.return_value.__enter__.return_value.stat.side_effect = (
+        test_scrape._entry_stats
+    )
 
     if not os.path.exists('/usr/src/app/cadcproxy.pem'):
         with open('/usr/src/app/cadcproxy.pem', 'w') as f:
@@ -118,10 +122,13 @@ def test_validator(ftp_mock, caps_mock, post_mock):
     os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
     try:
         test_subject = validator.NeossatValidator()
-        test_listing_fqn = \
+        test_listing_fqn = (
             f'{test_subject._config.working_directory}/{mc.VALIDATE_OUTPUT}'
-        test_source_list_fqn = f'{test_subject._config.working_directory}/' \
-                               f'{scrape.NEOSSAT_SOURCE_LIST}'
+        )
+        test_source_list_fqn = (
+            f'{test_subject._config.working_directory}/'
+            f'{scrape.NEOSSAT_SOURCE_LIST}'
+        )
         if os.path.exists(test_listing_fqn):
             os.unlink(test_listing_fqn)
         if os.path.exists(test_subject._config.work_fqn):
@@ -133,28 +140,33 @@ def test_validator(ftp_mock, caps_mock, post_mock):
         assert test_source is not None, 'expected source result'
         assert test_meta is not None, 'expected destination result'
         assert len(test_source) == 15, 'wrong number of source results'
-        assert 'NEOS_SCI_2019213215700_clean.fits' in test_source, \
-            'wrong source content'
+        assert (
+            'NEOS_SCI_2019213215700_clean.fits' in test_source
+        ), 'wrong source content'
         assert len(test_meta) == 1, 'wrong # of destination results'
-        assert 'NEOS_SCI_2019213215700_cor.fits' in test_meta, \
-            'wrong destination content'
+        assert (
+            'NEOS_SCI_2019213215700_cor.fits' in test_meta
+        ), 'wrong destination content'
         assert os.path.exists(test_listing_fqn), 'should create file record'
 
         test_subject.write_todo()
-        assert os.path.exists(test_subject._config.work_fqn), \
-            'should create file record'
+        assert os.path.exists(
+            test_subject._config.work_fqn
+        ), 'should create file record'
         with open(test_subject._config.work_fqn, 'r') as f:
             content = f.readlines()
         content_sorted = sorted(content)
-        assert content_sorted[0] == '/users/OpenData_DonneesOuvertes/pub/' \
-                                    'NEOSSAT/ASTRO/2017/125/DARK/FINE_POINT/' \
-                                    'NEOS_SCI_2017125084700.fits\n', \
-            'unexpected content'
+        assert (
+            content_sorted[0] == '/users/OpenData_DonneesOuvertes/pub/'
+            'NEOSSAT/ASTRO/2017/125/DARK/FINE_POINT/'
+            'NEOS_SCI_2017125084700.fits\n'
+        ), 'unexpected content'
 
         # does the cached list work too?
         test_cache = test_subject.read_from_source()
         assert test_cache is not None, 'expected cached source result'
-        assert next(iter(test_cache)) == 'NEOS_SCI_2017125084700.fits', \
-            'wrong cached result'
+        assert (
+            next(iter(test_cache)) == 'NEOS_SCI_2017125084700.fits'
+        ), 'wrong cached result'
     finally:
         os.getcwd = getcwd_orig

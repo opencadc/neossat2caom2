@@ -79,9 +79,11 @@ from caom2pipe import manage_composable as mc
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
 TEST_OBS = '2019213215700'
-TEST_FILES = ['NEOS_SCI_2019213215700.fits',
-              'NEOS_SCI_2019213215700_cor.fits',
-              'NEOS_SCI_2019213215700_cord.fits']
+TEST_FILES = [
+    'NEOS_SCI_2019213215700.fits',
+    'NEOS_SCI_2019213215700_cor.fits',
+    'NEOS_SCI_2019213215700_cord.fits',
+]
 
 
 def test_preview_aug_visit():

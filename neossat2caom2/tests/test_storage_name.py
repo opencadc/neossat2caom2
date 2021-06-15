@@ -74,13 +74,17 @@ def test_is_valid():
 
 
 def test_storage_name():
-    for f_name in ['NEOS_SCI_2019213173800_cord.fits',
-                   'NEOS_SCI_2019213173800_cor.fits.gz',
-                   'NEOS_SCI_2019213173800.fits']:
+    for f_name in [
+        'NEOS_SCI_2019213173800_cord.fits',
+        'NEOS_SCI_2019213173800_cor.fits.gz',
+        'NEOS_SCI_2019213173800.fits',
+    ]:
         test_sub = NEOSSatName(file_name=f_name)
         assert test_sub.obs_id == '2019213173800'
 
         if f_name == 'NEOS_SCI_2019213173800_cord.fits':
             assert test_sub.prev_uri == 'ad:NEOSS/2019213173800_cord_prev.png'
-            assert test_sub.thumb_uri == \
-                'ad:NEOSS/2019213173800_cord_prev_256.png'
+            assert (
+                test_sub.thumb_uri
+                == 'ad:NEOSS/2019213173800_cord_prev_256.png'
+            )
