@@ -107,35 +107,41 @@ class NEOSSatName(mc.StorageName):
 
     BLANK_NAME_PATTERN = '*'
 
-    def __init__(
-        self, obs_id=None, fname_on_disk=None, file_name=None, entry=None
-    ):
-        if obs_id is not None:
-            fname_on_disk = 'NEOS_SCI_{}.fits'.format(obs_id)
-        elif file_name is not None:
-            if '/' in file_name:
-                self._ftp_fqn = file_name
-                file_name = os.path.basename(file_name)
-            fname_on_disk = file_name
-            obs_id = NEOSSatName.remove_extensions(
-                NEOSSatName.extract_obs_id(file_name)
-            )
-            self._product_id = NEOSSatName.extract_product_id(file_name)
-        self._file_name = fname_on_disk.replace('.header', '')
+    def __init__(self, file_name, entry):
+        if '/' in file_name:
+            self._ftp_fqn = file_name
+            self._file_name = os.path.basename(file_name)
+            self._source_names = [file_name]
+        else:
+            self._file_name = file_name
+            self._source_names = [self._file_name]
+        self._obs_id = NEOSSatName.remove_extensions(
+            NEOSSatName.extract_obs_id(self._file_name)
+        )
+        self._product_id = NEOSSatName.extract_product_id(self._file_name)
         super(NEOSSatName, self).__init__(
-            obs_id,
+            self._obs_id,
             COLLECTION,
             NEOSSatName.BLANK_NAME_PATTERN,
-            fname_on_disk,
+            self._file_name,
             archive=ARCHIVE,
             entry=entry,
+            source_names=self._source_names
         )
-        logging.debug(
-            'obs id {} file name {}'.format(self._obs_id, self._file_name)
-        )
+        self._logger.error(self)
+
+    def __str__(self):
+        return f'\n' \
+               f'      obs id: {self._obs_id}\n' \
+               f'   file name: {self._file_name}\n' \
+               f'source names: {self.source_names}\n'
 
     def is_valid(self):
         return True
+
+    @property
+    def destination_uris(self):
+        return [self.file_uri]
 
     @property
     def product_id(self):
@@ -656,7 +662,7 @@ def _get_uris(args):
         for ii in args.local:
             file_id = NEOSSatName.remove_extensions(os.path.basename(ii))
             file_name = '{}.fits'.format(file_id)
-            result.append(NEOSSatName(file_name=file_name).file_uri)
+            result.append(NEOSSatName(file_name, file_name).file_uri)
     elif args.lineage:
         for ii in args.lineage:
             result.append(ii.split('/', 1)[1])

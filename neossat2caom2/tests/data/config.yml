@@ -52,7 +52,8 @@ rejected_directory: /usr/src/app/rejected
 #
 state_file_name: state.yml
 interval: 6000
-source_host: ftp.asc-csa.gc.ca
+data_sources:
+  - ftp.asc-csa.gc.ca
 # how to control the work that gets done
 # possible values are:
 # - scrape - read the headers, write out the xml - kind of a test mode

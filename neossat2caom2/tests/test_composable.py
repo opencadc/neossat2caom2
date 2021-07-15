@@ -70,7 +70,7 @@
 import os
 
 from datetime import datetime, timedelta
-from mock import patch, Mock
+from mock import patch, Mock, ANY
 
 from caom2 import SimpleObservation
 from caom2pipe import execute_composable as ec
@@ -131,17 +131,13 @@ def test_run_state(query_mock, run_mock):
         ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
         assert run_mock.call_count == 10, 'wrong call count'
     except Exception as e:
-        import traceback
-        import logging
-
-        logging.error(traceback.format_exc())
-        assert False, 'unexpected exception'
+        assert False, f'unexpected exception {e}'
     finally:
         os.getcwd = getcwd_orig
 
 
-@patch('caom2pipe.execute_composable.CAOM2RepoClient')
-@patch('caom2pipe.execute_composable.CadcDataClient')
+@patch('caom2pipe.client_composable.CAOM2RepoClient')
+@patch('caom2pipe.client_composable.CadcDataClient')
 def test_run_by_file(data_client_mock, repo_mock):
     repo_mock.return_value.read.side_effect = _mock_repo_read
     repo_mock.return_value.create.side_effect = Mock()
@@ -161,15 +157,15 @@ def test_run_by_file(data_client_mock, repo_mock):
             repo_mock.return_value.update.call_count == 10
         ), 'wrong number of mock calls'
     except Exception as e:
-        assert False, 'unexpected exception'
+        assert False, f'unexpected exception {e}'
     finally:
         os.getcwd = getcwd_orig
 
 
-@patch('caom2pipe.manage_composable.data_put')
+@patch('caom2pipe.client_composable.data_put_fqn')
 def test_store(put_mock):
     test_config = mc.Config()
-    test_config.logging_level = 'ERROR'
+    test_config.logging_level = 'DEBUG'
     test_config.working_directory = '/tmp'
     test_fqn = (
         '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/'
@@ -177,9 +173,7 @@ def test_store(put_mock):
     )
     test_storage_name = NEOSSatName(file_name=test_fqn, entry=test_fqn)
     transferrer = Mock()
-    cred_param = Mock()
     cadc_data_client = Mock()
-    caom_repo_client = Mock()
     observable = mc.Observable(
         mc.Rejected('/tmp/rejected.yml'), mc.Metrics(test_config)
     )
@@ -187,16 +181,19 @@ def test_store(put_mock):
         test_config,
         test_storage_name,
         APPLICATION,
-        cred_param,
         cadc_data_client,
-        caom_repo_client,
         observable,
         transferrer,
     )
     test_subject.execute(None)
     assert put_mock.called, 'expect a call'
-    args, kwargs = put_mock.call_args
-    assert args[2] == test_storage_name.file_name, 'wrong file name'
+    put_mock.assert_called_with(
+        ANY,
+        '/tmp/2019268004930/NEOS_SCI_2019268004930_clean.fits',
+        ANY,
+        None,
+        ANY,
+    ), 'wrong put args'
     assert transferrer.get.called, 'expect a transfer call'
     args, kwargs = transferrer.get.call_args
     import logging

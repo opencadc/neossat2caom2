@@ -103,7 +103,7 @@ def _run():
     builder = nbc.FileNameBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
-    transferrer = tc.FtpTransfer(config.data_source)
+    transferrer = tc.FtpTransfer(config.data_sources[0])
     return rc.run_by_todo(
         name_builder=builder,
         config=config,
@@ -144,7 +144,7 @@ def _run_state():
     )
     max_date = datetime.fromtimestamp(max_timestamp)
     incremental_source = data_source.IncrementalSource(todo_list)
-    transferrer = tc.FtpTransfer(config.data_source)
+    transferrer = tc.FtpTransfer(config.data_sources[0])
     return rc.run_by_state(
         config=config,
         name_builder=builder,

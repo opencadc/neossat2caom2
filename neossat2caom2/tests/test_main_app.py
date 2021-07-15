@@ -125,7 +125,7 @@ def pytest_generate_tests(metafunc):
 
 def test_main_app(test_name):
     basename = os.path.basename(test_name)
-    neos_name = NEOSSatName(file_name=basename)
+    neos_name = NEOSSatName(file_name=basename, entry=basename)
     output_file = '{}/{}.actual.xml'.format(TEST_DATA_DIR, basename)
     obs_path = '{}/{}'.format(
         TEST_DATA_DIR, '{}.expected.xml'.format(neos_name.obs_id)
