@@ -89,14 +89,12 @@ __all__ = [
     'NEOSSatName',
     'COLLECTION',
     'APPLICATION',
-    'ARCHIVE',
     'to_caom2',
 ]
 
 
 APPLICATION = 'neossat2caom2'
 COLLECTION = 'NEOSSAT'
-ARCHIVE = 'NEOSS'
 
 
 class NEOSSatName(mc.StorageName):
@@ -129,7 +127,7 @@ class NEOSSatName(mc.StorageName):
             scheme='cadc',
             source_names=self._source_names
         )
-        self._logger.error(self)
+        self._logger.debug(self)
 
     def __str__(self):
         return f'\n' \

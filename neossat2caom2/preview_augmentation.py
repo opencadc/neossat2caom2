@@ -76,8 +76,9 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
 from caom2 import Observation, ReleaseType, ProductType
+from caom2pipe import client_composable as clc
 from caom2pipe import manage_composable as mc
-from neossat2caom2 import ARCHIVE, NEOSSatName
+from neossat2caom2 import NEOSSatName
 
 
 def visit(observation, **kwargs):
@@ -135,7 +136,9 @@ def _augment(plane, uri, fqn, product_type):
 
 def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
     naming = mc.CaomName(artifact.uri)
-    neoss_name = NEOSSatName(file_name=naming.file_name)
+    neoss_name = NEOSSatName(
+        file_name=naming.file_name, entry=naming.file_name
+    )
     preview = neoss_name.prev
     preview_fqn = os.path.join(working_dir, preview)
     thumb = neoss_name.thumb
@@ -151,7 +154,7 @@ def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
     prev_uri = neoss_name.prev_uri
     thumb_uri = neoss_name.thumb_uri
     _store_smalls(
-        cadc_client, working_dir, preview, thumb, observable.metrics, stream
+        cadc_client, preview_fqn, thumb_fqn, neoss_name, observable.metrics
     )
     _augment(plane, prev_uri, preview_fqn, ProductType.PREVIEW)
     _augment(plane, thumb_uri, thumb_fqn, ProductType.THUMBNAIL)
@@ -159,26 +162,14 @@ def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
 
 
 def _store_smalls(
-    cadc_client, working_directory, preview_fname, thumb_fname, metrics, stream
+    cadc_client, preview_fqn, thumb_fqn, neoss_name, metrics
 ):
     if cadc_client is not None:
-        mc.data_put(
-            cadc_client,
-            working_directory,
-            preview_fname,
-            ARCHIVE,
-            stream,
-            mime_type='image/png',
-            metrics=metrics,
+        clc.si_client_put(
+            cadc_client, preview_fqn, neoss_name.prev_uri, metrics
         )
-        mc.data_put(
-            cadc_client,
-            working_directory,
-            thumb_fname,
-            ARCHIVE,
-            stream,
-            mime_type='image/png',
-            metrics=metrics,
+        clc.si_client_put(
+            cadc_client, thumb_fqn, neoss_name.thumb_uri, metrics
         )
 
 
