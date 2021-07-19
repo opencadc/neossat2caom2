@@ -83,10 +83,13 @@ def test_storage_name():
         assert test_sub.obs_id == '2019213173800'
 
         if f_name == 'NEOS_SCI_2019213173800_cord.fits':
-            assert test_sub.prev_uri == 'ad:NEOSS/2019213173800_cord_prev.png'
+            assert (
+                test_sub.prev_uri
+                == 'cadc:NEOSSAT/2019213173800_cord_prev.png'
+            )
             assert (
                 test_sub.thumb_uri
-                == 'ad:NEOSS/2019213173800_cord_prev_256.png'
+                == 'cadc:NEOSSAT/2019213173800_cord_prev_256.png'
             )
 
 
@@ -100,7 +103,7 @@ def test_storage_name_fqn():
     assert test_subject.file_name == f_name, 'wrong file name'
     assert test_subject.source_names == [f'{test_fqn}'], 'wrong source names'
     assert (
-        test_subject.destination_uris == [f'ad:NEOSS/{f_name}']
+        test_subject.destination_uris == [f'cadc:NEOSSAT/{f_name}']
     ), 'wrong destination uris'
     assert test_subject.obs_id == '2019268004930', 'wrong obs id'
     assert test_subject.product_id == 'clean', 'wrong product id'

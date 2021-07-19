@@ -64,6 +64,4 @@ data_sources:
 task_types: 
   - visit
 features:
-  supports_composite: False
-  use_file_names: True
-  use_urls: False
+  supports_latest_client: True

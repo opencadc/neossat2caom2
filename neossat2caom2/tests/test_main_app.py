@@ -66,13 +66,13 @@
 #
 # ***********************************************************************
 #
-import pytest
 
 from mock import patch
 
+from cadcutils import exceptions
+from cadcdata import FileInfo
 from neossat2caom2 import main_app, NEOSSatName, APPLICATION
-from neossat2caom2 import COLLECTION, ARCHIVE
-from caom2.diff import get_differences
+from neossat2caom2 import COLLECTION
 from caom2pipe import manage_composable as mc
 
 import os
@@ -131,12 +131,23 @@ def test_main_app(test_name):
         TEST_DATA_DIR, '{}.expected.xml'.format(neos_name.obs_id)
     )
 
-    with patch('caom2utils.fits2caom2.CadcDataClient') as data_client_mock:
-
+    with patch(
+        'caom2utils.fits2caom2.StorageInventoryClient',
+        autospec=True,
+    ) as data_client_mock, \
+        patch(
+        'caom2utils.fits2caom2.CadcDataClient',
+        autospec=True,
+    ) as old_data_client_mock:
         def get_file_info(archive, file_id):
-            return {'type': 'application/fits'}
+            raise exceptions.NotFoundException(f'{file_id}')
 
-        data_client_mock.return_value.get_file_info.side_effect = get_file_info
+        def cadcinfo_mock(uri):
+            return FileInfo(id=uri, file_type='application/fits')
+
+        old_data_client_mock.return_value.get_file_info.side_effect = \
+            get_file_info
+        data_client_mock.return_value.cadcinfo.side_effect = cadcinfo_mock
         sys.argv = (
             '{} --no_validate --local {} --observation {} {} -o {} '
             '--plugin {} --module {} --lineage {}'.format(
@@ -163,7 +174,9 @@ def _get_lineage(obs_id):
     result = ''
     for ii in LOOKUP[obs_id]:
         product_id = NEOSSatName.extract_product_id(ii)
-        fits = mc.get_lineage(ARCHIVE, product_id, '{}.fits'.format(ii))
+        fits = mc.get_lineage(
+            COLLECTION, product_id, '{}.fits'.format(ii), 'cadc'
+        )
         result = '{} {}'.format(result, fits)
     return result
 

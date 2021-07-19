@@ -37,7 +37,7 @@
       </caom2:provenance>
       <caom2:artifacts>
         <caom2:artifact caom2:id="52650a70-639e-460a-a926-d6ff578cab88">
-          <caom2:uri>ad:NEOSS/NEOS_SCI_2019258000140.fits</caom2:uri>
+          <caom2:uri>cadc:NEOSSAT/NEOS_SCI_2019258000140.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
@@ -147,7 +147,7 @@
       </caom2:provenance>
       <caom2:artifacts>
         <caom2:artifact caom2:id="74a65977-7fb6-4e59-814e-bb986f0561a0">
-          <caom2:uri>ad:NEOSS/NEOS_SCI_2019258000140_clean.fits</caom2:uri>
+          <caom2:uri>cadc:NEOSSAT/NEOS_SCI_2019258000140_clean.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>

@@ -124,8 +124,9 @@ class NEOSSatName(mc.StorageName):
             COLLECTION,
             NEOSSatName.BLANK_NAME_PATTERN,
             self._file_name,
-            archive=ARCHIVE,
+            archive=COLLECTION,
             entry=entry,
+            scheme='cadc',
             source_names=self._source_names
         )
         self._logger.error(self)
