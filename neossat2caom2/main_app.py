@@ -106,12 +106,11 @@ class NEOSSatName(mc.StorageName):
     BLANK_NAME_PATTERN = '*'
 
     def __init__(self, file_name, entry):
-        if '/' in file_name:
+        self._file_name = file_name
+        if '/' in entry:
             self._ftp_fqn = file_name
-            self._file_name = os.path.basename(file_name)
-            self._source_names = [file_name]
+            self._source_names = [entry]
         else:
-            self._file_name = file_name
             self._source_names = [self._file_name]
         self._obs_id = NEOSSatName.remove_extensions(
             NEOSSatName.extract_obs_id(self._file_name)

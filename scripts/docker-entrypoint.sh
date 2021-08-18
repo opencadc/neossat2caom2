@@ -11,6 +11,14 @@ if [[ ! -e ${PWD}/state.yml ]]; then
     echo "bookmarks:
     neossat_timestamp:
       last_record: $yesterday
+context:
+  neossat_context:
+    - NESS
+    - 2017
+    - 2018
+    - 2019
+    - 2020
+    - 2021
 " > ${PWD}/state.yml
   else
     cp /usr/local/bin/state.yml ${PWD}

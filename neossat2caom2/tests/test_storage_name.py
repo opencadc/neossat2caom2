@@ -66,6 +66,8 @@
 #
 # ***********************************************************************
 #
+
+from caom2pipe import name_builder_composable as nbc
 from neossat2caom2 import NEOSSatName
 
 
@@ -74,12 +76,13 @@ def test_is_valid():
 
 
 def test_storage_name():
+    test_builder = nbc.GuessingBuilder(NEOSSatName)
     for f_name in [
         'NEOS_SCI_2019213173800_cord.fits',
         'NEOS_SCI_2019213173800_cor.fits.gz',
         'NEOS_SCI_2019213173800.fits',
     ]:
-        test_sub = NEOSSatName(file_name=f_name, entry=f_name)
+        test_sub = test_builder.build(f_name)
         assert test_sub.obs_id == '2019213173800'
 
         if f_name == 'NEOS_SCI_2019213173800_cord.fits':
@@ -99,7 +102,8 @@ def test_storage_name_fqn():
         f'/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/'
         f'268/{f_name}'
     )
-    test_subject = NEOSSatName(file_name=test_fqn, entry=test_fqn)
+    test_builder = nbc.GuessingBuilder(NEOSSatName)
+    test_subject = test_builder.build(test_fqn)
     assert test_subject.file_name == f_name, 'wrong file name'
     assert test_subject.source_names == [f'{test_fqn}'], 'wrong source names'
     assert (

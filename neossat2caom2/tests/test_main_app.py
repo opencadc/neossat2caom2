@@ -123,7 +123,8 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize('test_name', obs_id_list)
 
 
-def test_main_app(test_name):
+@patch('caom2utils.cadc_client_wrapper.StorageClientWrapper')
+def test_main_app(data_client_mock, test_name):
     basename = os.path.basename(test_name)
     neos_name = NEOSSatName(file_name=basename, entry=basename)
     output_file = '{}/{}.actual.xml'.format(TEST_DATA_DIR, basename)
@@ -131,38 +132,25 @@ def test_main_app(test_name):
         TEST_DATA_DIR, '{}.expected.xml'.format(neos_name.obs_id)
     )
 
-    with patch(
-        'caom2utils.fits2caom2.StorageInventoryClient',
-        autospec=True,
-    ) as data_client_mock, \
-        patch(
-        'caom2utils.fits2caom2.CadcDataClient',
-        autospec=True,
-    ) as old_data_client_mock:
-        def get_file_info(archive, file_id):
-            raise exceptions.NotFoundException(f'{file_id}')
+    def cadcinfo_mock(uri):
+        return FileInfo(id=uri, file_type='application/fits')
 
-        def cadcinfo_mock(uri):
-            return FileInfo(id=uri, file_type='application/fits')
-
-        old_data_client_mock.return_value.get_file_info.side_effect = \
-            get_file_info
-        data_client_mock.return_value.cadcinfo.side_effect = cadcinfo_mock
-        sys.argv = (
-            '{} --no_validate --local {} --observation {} {} -o {} '
-            '--plugin {} --module {} --lineage {}'.format(
-                APPLICATION,
-                _get_local(test_name),
-                COLLECTION,
-                test_name,
-                output_file,
-                PLUGIN,
-                PLUGIN,
-                _get_lineage(test_name),
-            )
-        ).split()
-        print(sys.argv)
-        main_app.to_caom2()
+    data_client_mock.return_value.info.side_effect = cadcinfo_mock
+    sys.argv = (
+        '{} --no_validate --local {} --observation {} {} -o {} '
+        '--plugin {} --module {} --lineage {}'.format(
+            APPLICATION,
+            _get_local(test_name),
+            COLLECTION,
+            test_name,
+            output_file,
+            PLUGIN,
+            PLUGIN,
+            _get_lineage(test_name),
+        )
+    ).split()
+    print(sys.argv)
+    main_app.to_caom2()
 
     compare_result = mc.compare_observations(output_file, obs_path)
     if compare_result is not None:

@@ -75,6 +75,7 @@ from mock import patch, Mock, ANY
 from caom2 import SimpleObservation
 from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
+from caom2pipe import name_builder_composable as nbc
 from neossat2caom2 import composable, APPLICATION, NEOSSatName, NEOS_BOOKMARK
 from neossat2caom2 import scrape
 
@@ -137,12 +138,12 @@ def test_run_state(query_mock, run_mock):
 
 
 @patch('caom2pipe.client_composable.CAOM2RepoClient')
-@patch('caom2pipe.client_composable.CadcDataClient')
+@patch('caom2utils.cadc_client_wrapper.StorageClientWrapper')
 def test_run_by_file(data_client_mock, repo_mock):
     repo_mock.return_value.read.side_effect = _mock_repo_read
     repo_mock.return_value.create.side_effect = Mock()
     repo_mock.return_value.update.side_effect = _mock_repo_update
-    data_client_mock.return_value.get_file_info.side_effect = (
+    data_client_mock.return_value.info.side_effect = (
         _mock_get_file_info
     )
     getcwd_orig = os.getcwd
@@ -162,8 +163,7 @@ def test_run_by_file(data_client_mock, repo_mock):
         os.getcwd = getcwd_orig
 
 
-@patch('caom2pipe.client_composable.data_put_fqn')
-def test_store(put_mock):
+def test_store():
     test_config = mc.Config()
     test_config.logging_level = 'DEBUG'
     test_config.working_directory = '/tmp'
@@ -171,7 +171,10 @@ def test_store(put_mock):
         '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/'
         '268/NEOS_SCI_2019268004930_clean.fits'
     )
-    test_storage_name = NEOSSatName(file_name=test_fqn, entry=test_fqn)
+    test_builder = nbc.GuessingBuilder(NEOSSatName)
+    test_storage_name = test_builder.build(test_fqn)
+    import logging
+    logging.error(test_storage_name)
     transferrer = Mock()
     cadc_data_client = Mock()
     observable = mc.Observable(
@@ -186,24 +189,16 @@ def test_store(put_mock):
         transferrer,
     )
     test_subject.execute(None)
-    assert put_mock.called, 'expect a call'
-    put_mock.assert_called_with(
-        ANY,
-        '/tmp/2019268004930/NEOS_SCI_2019268004930_clean.fits',
-        ANY,
+    assert cadc_data_client.put.called, 'expect a put call'
+    cadc_data_client.put.assert_called_with(
+        '/tmp/2019268004930',
+        'cadc:NEOSSAT/NEOS_SCI_2019268004930_clean.fits',
         None,
-        ANY,
     ), 'wrong put args'
     assert transferrer.get.called, 'expect a transfer call'
-    args, kwargs = transferrer.get.call_args
-    import logging
-
-    logging.error(args)
-    assert args[0] == test_fqn, 'wrong source parameter'
-    assert (
-        args[1] == f'/tmp/{test_storage_name.obs_id}/'
-        f'{test_storage_name.file_name}'
-    ), 'wrong destination parameter'
+    transferrer.get.assert_called_with(
+        test_fqn, '/tmp/2019268004930/NEOS_SCI_2019268004930_clean.fits'
+    ), 'wrong get args'
 
 
 def _append_todo_mock(ignore1, ignore2, ignore3, ignore4, ignore5, ignore6):

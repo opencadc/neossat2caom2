@@ -100,7 +100,7 @@ def _run():
     :return 0 if successful, -1 if there's any sort of failure. Return status
         is used by airflow for task instance management and reporting.
     """
-    builder = nbc.FileNameBuilder(NEOSSatName)
+    builder = nbc.GuessingBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
     transferrer = tc.FtpTransfer(config.data_sources[0])
@@ -133,7 +133,7 @@ def _run_state():
     Ingestion is based on fully-qualified file names from the CSA ftp host,
     because those are difficult to reproduce otherwise.
     """
-    builder = nbc.FileNameBuilder(NEOSSatName)
+    builder = nbc.GuessingBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
     state = mc.State(config.state_fqn)
