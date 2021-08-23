@@ -8,13 +8,13 @@ In an empty directory (the 'working directory'), on a machine with Docker instal
 1. In the master branch of this repository, one time only, find the scripts directory, and copy the file state.yml to the working directory. e.g.:
 
    ```
-   wget https://raw.github.com/opencadc-metadata-curation/neossat2caom2/master/scripts/state.yml
+   wget https://raw.github.com/opencadc/neossat2caom2/master/scripts/state.yml
    ```
 
 1. In the master branch of this repository, one time only, find the scripts directory, and copy the file neossat_run_state.sh to the working directory. e.g.:
 
    ```
-   wget https://raw.github.com/opencadc-metadata-curation/neossat2caom2/master/scripts/neossat_run_state.sh
+   wget https://raw.github.com/opencadc/neossat2caom2/master/scripts/neossat_run_state.sh
    ```
 
 1. Ensure the script is executable, one time only:
