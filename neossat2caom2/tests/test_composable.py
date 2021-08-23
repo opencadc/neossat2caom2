@@ -112,9 +112,11 @@ TEST_FILE_LIST = [
 ]
 
 
+@patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
 @patch('neossat2caom2.scrape._append_todo')
-def test_run_state(query_mock, run_mock):
+def test_run_state(query_mock, run_mock, access_mock):
+    access_mock.return_value = 'https://localhost'
     _write_state(TEST_START_TIME)
     query_mock.side_effect = _append_todo_mock
     run_mock.return_value = 0
@@ -137,9 +139,11 @@ def test_run_state(query_mock, run_mock):
         os.getcwd = getcwd_orig
 
 
+@patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.client_composable.CAOM2RepoClient')
-@patch('caom2utils.cadc_client_wrapper.StorageClientWrapper')
-def test_run_by_file(data_client_mock, repo_mock):
+@patch('caom2utils.data_util.StorageClientWrapper')
+def test_run_by_file(data_client_mock, repo_mock, access_mock):
+    access_mock.return_value = 'https://localhost'
     repo_mock.return_value.read.side_effect = _mock_repo_read
     repo_mock.return_value.create.side_effect = Mock()
     repo_mock.return_value.update.side_effect = _mock_repo_update

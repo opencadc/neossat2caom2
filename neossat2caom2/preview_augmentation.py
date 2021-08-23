@@ -76,9 +76,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
 from caom2 import Observation, ReleaseType, ProductType
-from caom2pipe import client_composable as clc
 from caom2pipe import manage_composable as mc
-from neossat2caom2 import NEOSSatName
 
 
 def visit(observation, **kwargs):
@@ -90,25 +88,21 @@ def visit(observation, **kwargs):
         logging.warning(
             'Visitor needs a cadc_client parameter to store images.'
         )
-    stream = kwargs.get('stream')
-    if stream is None:
-        raise mc.CadcException('Visitor needs a stream parameter.')
     observable = kwargs.get('observable')
     if observable is None:
         raise mc.CadcException('Visitor needs a observable parameter.')
-    science_file = kwargs.get('science_file')
+    storage_name = kwargs.get('storage_name')
 
     count = 0
     for plane in observation.planes.values():
         delete_list = []
         for artifact in plane.artifacts.values():
-            if artifact.uri.endswith(science_file):
+            if artifact.uri == storage_name.file_uri:
                 count += _do_prev(
-                    artifact,
                     plane,
                     working_dir,
                     cadc_client,
-                    stream,
+                    storage_name,
                     observable,
                 )
             if artifact.uri.endswith('.jpg'):
@@ -134,16 +128,10 @@ def _augment(plane, uri, fqn, product_type):
     )
 
 
-def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
-    naming = mc.CaomName(artifact.uri)
-    neoss_name = NEOSSatName(
-        file_name=naming.file_name, entry=naming.file_name
-    )
-    preview = neoss_name.prev
-    preview_fqn = os.path.join(working_dir, preview)
-    thumb = neoss_name.thumb
-    thumb_fqn = os.path.join(working_dir, thumb)
-    science_fqn = os.path.join(working_dir, naming.file_name)
+def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
+    preview_fqn = os.path.join(working_dir, storage_name.prev)
+    thumb_fqn = os.path.join(working_dir, storage_name.thumb)
+    science_fqn = os.path.join(working_dir, storage_name.file_name)
 
     image_data = fits.getdata(science_fqn, ext=0)
     image_header = fits.getheader(science_fqn, ext=0)
@@ -151,10 +139,10 @@ def _do_prev(artifact, plane, working_dir, cadc_client, stream, observable):
     _generate_plot(preview_fqn, 1024, image_data, image_header)
     _generate_plot(thumb_fqn, 256, image_data, image_header)
 
-    prev_uri = neoss_name.prev_uri
-    thumb_uri = neoss_name.thumb_uri
+    prev_uri = storage_name.prev_uri
+    thumb_uri = storage_name.thumb_uri
     _store_smalls(
-        cadc_client, preview_fqn, thumb_fqn, neoss_name, observable.metrics
+        cadc_client, preview_fqn, thumb_fqn, storage_name, observable.metrics
     )
     _augment(plane, prev_uri, preview_fqn, ProductType.PREVIEW)
     _augment(plane, thumb_uri, thumb_fqn, ProductType.THUMBNAIL)
@@ -165,12 +153,8 @@ def _store_smalls(
     cadc_client, preview_fqn, thumb_fqn, neoss_name, metrics
 ):
     if cadc_client is not None:
-        clc.si_client_put(
-            cadc_client, preview_fqn, neoss_name.prev_uri, metrics
-        )
-        clc.si_client_put(
-            cadc_client, thumb_fqn, neoss_name.thumb_uri, metrics
-        )
+        cadc_client.put(preview_fqn, neoss_name.prev_uri, metrics)
+        cadc_client.put(thumb_fqn, neoss_name.thumb_uri, metrics)
 
 
 def _generate_plot(fqn, dpi_factor, image_data, image_header):

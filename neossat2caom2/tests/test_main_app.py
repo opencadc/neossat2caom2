@@ -123,7 +123,7 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize('test_name', obs_id_list)
 
 
-@patch('caom2utils.cadc_client_wrapper.StorageClientWrapper')
+@patch('caom2utils.data_util.StorageClientWrapper')
 def test_main_app(data_client_mock, test_name):
     basename = os.path.basename(test_name)
     neos_name = NEOSSatName(file_name=basename, entry=basename)
