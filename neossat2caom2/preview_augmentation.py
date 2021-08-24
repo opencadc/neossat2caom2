@@ -130,12 +130,14 @@ def _augment(plane, uri, fqn, product_type):
 
 
 def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
-    preview_fqn = os.path.join(working_dir, storage_name.prev)
-    thumb_fqn = os.path.join(working_dir, storage_name.thumb)
     if storage_name.source_names[0].startswith(NEOS_DIR):
-        science_fqn = os.path.join(working_dir, storage_name.file_name)
+        base_dir = working_dir
     else:
-        science_fqn = storage_name.source_names[0]
+        base_dir = os.path.dirname(storage_name.source_names[0])
+
+    science_fqn = os.path.join(base_dir, storage_name.file_name)
+    preview_fqn = os.path.join(base_dir, storage_name.prev)
+    thumb_fqn = os.path.join(base_dir, storage_name.thumb)
 
     image_data = fits.getdata(science_fqn, ext=0)
     image_header = fits.getheader(science_fqn, ext=0)
