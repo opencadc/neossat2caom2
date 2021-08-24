@@ -81,14 +81,16 @@ class NeossatValidator(mc.Validator):
         super(NeossatValidator, self).__init__(
             source_name=main_app.COLLECTION,
             preview_suffix='png',
-            source_tz='America/Montreal')
+            source_tz='America/Montreal',
+        )
         # a dictionary where the file name is the key, and the fully-qualified
         # file name at the FTP site is the value
         self._fully_qualified_list = None
 
     def read_from_source(self):
         validator_list, fully_qualified_list = scrape.list_for_validate(
-            self._config)
+            self._config
+        )
         self._fully_qualified_list = fully_qualified_list
         return validator_list
 
@@ -111,6 +113,7 @@ def validate():
 
 if __name__ == '__main__':
     import sys
+
     try:
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)

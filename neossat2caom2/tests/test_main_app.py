@@ -66,13 +66,13 @@
 #
 # ***********************************************************************
 #
-import pytest
 
 from mock import patch
 
+from cadcutils import exceptions
+from cadcdata import FileInfo
 from neossat2caom2 import main_app, NEOSSatName, APPLICATION
-from neossat2caom2 import COLLECTION, ARCHIVE
-from caom2.diff import get_differences
+from neossat2caom2 import COLLECTION
 from caom2pipe import manage_composable as mc
 
 import os
@@ -83,25 +83,37 @@ TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
 PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
 
 
-LOOKUP = {'2019213173800': ['NEOS_SCI_2019213173800',
-                            'NEOS_SCI_2019213173800_cor',
-                            'NEOS_SCI_2019213173800_cord'],
-          '2019258000140': ['NEOS_SCI_2019258000140',
-                            'NEOS_SCI_2019258000140_clean'],
-          '2019259111450': ['NEOS_SCI_2019259111450',
-                            'NEOS_SCI_2019259111450_clean'],
-          '2019213174531': ['NEOS_SCI_2019213174531',
-                            'NEOS_SCI_2019213174531_cor',
-                            'NEOS_SCI_2019213174531_cord'],
-          '2019213215700': ['NEOS_SCI_2019213215700',
-                            'NEOS_SCI_2019213215700_cor',
-                            'NEOS_SCI_2019213215700_cord'],
-          # dark
-          '2019267234420': ['NEOS_SCI_2019267234420_clean'],
-          # no RA, DEC keywords
-          '2015347015200': ['NEOS_SCI_2015347015200_clean'],
-          # PI Name
-          '2020255152013': ['NEOS_SCI_2020255152013_clean']}
+LOOKUP = {
+    '2019213173800': [
+        'NEOS_SCI_2019213173800',
+        'NEOS_SCI_2019213173800_cor',
+        'NEOS_SCI_2019213173800_cord',
+    ],
+    '2019258000140': [
+        'NEOS_SCI_2019258000140',
+        'NEOS_SCI_2019258000140_clean',
+    ],
+    '2019259111450': [
+        'NEOS_SCI_2019259111450',
+        'NEOS_SCI_2019259111450_clean',
+    ],
+    '2019213174531': [
+        'NEOS_SCI_2019213174531',
+        'NEOS_SCI_2019213174531_cor',
+        'NEOS_SCI_2019213174531_cord',
+    ],
+    '2019213215700': [
+        'NEOS_SCI_2019213215700',
+        'NEOS_SCI_2019213215700_cor',
+        'NEOS_SCI_2019213215700_cord',
+    ],
+    # dark
+    '2019267234420': ['NEOS_SCI_2019267234420_clean'],
+    # no RA, DEC keywords
+    '2015347015200': ['NEOS_SCI_2015347015200_clean'],
+    # PI Name
+    '2020255152013': ['NEOS_SCI_2020255152013_clean'],
+}
 
 
 def pytest_generate_tests(metafunc):
@@ -111,26 +123,34 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize('test_name', obs_id_list)
 
 
-def test_main_app(test_name):
+@patch('caom2utils.data_util.StorageClientWrapper')
+def test_main_app(data_client_mock, test_name):
     basename = os.path.basename(test_name)
-    neos_name = NEOSSatName(file_name=basename)
+    neos_name = NEOSSatName(file_name=basename, entry=basename)
     output_file = '{}/{}.actual.xml'.format(TEST_DATA_DIR, basename)
-    obs_path = '{}/{}'.format(TEST_DATA_DIR, '{}.expected.xml'.format(
-        neos_name.obs_id))
+    obs_path = '{}/{}'.format(
+        TEST_DATA_DIR, '{}.expected.xml'.format(neos_name.obs_id)
+    )
 
-    with patch('caom2utils.fits2caom2.CadcDataClient') as data_client_mock:
-        def get_file_info(archive, file_id):
-            return {'type': 'application/fits'}
+    def cadcinfo_mock(uri):
+        return FileInfo(id=uri, file_type='application/fits')
 
-        data_client_mock.return_value.get_file_info.side_effect = get_file_info
-        sys.argv = \
-            ('{} --no_validate --local {} --observation {} {} -o {} '
-             '--plugin {} --module {} --lineage {}'.
-             format(APPLICATION, _get_local(test_name), COLLECTION,
-                    test_name, output_file, PLUGIN, PLUGIN,
-                    _get_lineage(test_name))).split()
-        print(sys.argv)
-        main_app.to_caom2()
+    data_client_mock.return_value.info.side_effect = cadcinfo_mock
+    sys.argv = (
+        '{} --no_validate --local {} --observation {} {} -o {} '
+        '--plugin {} --module {} --lineage {}'.format(
+            APPLICATION,
+            _get_local(test_name),
+            COLLECTION,
+            test_name,
+            output_file,
+            PLUGIN,
+            PLUGIN,
+            _get_lineage(test_name),
+        )
+    ).split()
+    print(sys.argv)
+    main_app.to_caom2()
 
     compare_result = mc.compare_observations(output_file, obs_path)
     if compare_result is not None:
@@ -142,7 +162,9 @@ def _get_lineage(obs_id):
     result = ''
     for ii in LOOKUP[obs_id]:
         product_id = NEOSSatName.extract_product_id(ii)
-        fits = mc.get_lineage(ARCHIVE, product_id, '{}.fits'.format(ii))
+        fits = mc.get_lineage(
+            COLLECTION, product_id, '{}.fits'.format(ii), 'cadc'
+        )
         result = '{} {}'.format(result, fits)
     return result
 

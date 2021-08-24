@@ -74,7 +74,6 @@ __all__ = ['IncrementalSource']
 
 
 class IncrementalSource(dsc.DataSource):
-
     def __init__(self, todo_list):
         super(IncrementalSource, self).__init__()
         self._todo_list = todo_list

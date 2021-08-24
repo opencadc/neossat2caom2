@@ -99,24 +99,31 @@ EXISTING_MOCK_DIR = '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/M33'
 @patch('neossat2caom2.scrape.FTPHost')
 def test_append_todo(ftp_mock):
     _make_test_dirs()
-    ftp_mock.return_value.__enter__.return_value.listdir.\
-        side_effect = _list_dirs
-    ftp_mock.return_value.__enter__.return_value.stat. \
-        side_effect = _entry_stats
+    ftp_mock.return_value.__enter__.return_value.listdir.side_effect = (
+        _list_dirs
+    )
+    ftp_mock.return_value.__enter__.return_value.stat.side_effect = (
+        _entry_stats
+    )
     test_start = TEST_END_TIME - 1000
     test_result = scrape._append_todo(
-        test_start, '/usr/src/app', 'localhost', '/tmp/astro', {}, {})
+        test_start, '/usr/src/app', 'localhost', '/tmp/astro', {}, {}
+    )
     assert test_result is not None, 'expected result'
     assert len(test_result) == 14, 'wrong length of all the entries'
-    test_todo_list, test_max = scrape._remove_dir_names(test_result, test_start)
+    test_todo_list, test_max = scrape._remove_dir_names(
+        test_result, test_start
+    )
     assert test_todo_list is not None, 'expect a todo list'
     assert test_max is not None, 'expect a max time'
     assert test_max == TEST_END_TIME, 'wrong max time'
     assert len(test_todo_list) == 5, 'wrong length of file entries'
-    assert '/tmp/astro/2017/125/dark/fine_point/a.fits' in test_todo_list, \
-        'missing leafiest entry'
-    assert '/tmp/astro/2017/127/e.fits' in test_todo_list, \
-        'missing less leafy entry'
+    assert (
+        '/tmp/astro/2017/125/dark/fine_point/a.fits' in test_todo_list
+    ), 'missing leafiest entry'
+    assert (
+        '/tmp/astro/2017/127/e.fits' in test_todo_list
+    ), 'missing less leafy entry'
 
 
 @patch('neossat2caom2.scrape.FTPHost')
@@ -124,14 +131,15 @@ def test_list_for_validate(ftp_mock):
     # put some test appending files in place - these files indicate
     # a 'No Exceptions' ending to list_for_validate occurred last
     # time
-    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
-                             scrape.NEOSSAT_CACHE)
+    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_CACHE)
     if os.path.exists(cache_fqn):
         os.unlink(cache_fqn)
     source_list_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST)
-    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
-                              'test_source_listing.yml')
+        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST
+    )
+    source_fqn = os.path.join(
+        test_main_app.TEST_DATA_DIR, 'test_source_listing.yml'
+    )
     shutil.copy(source_fqn, source_list_fqn)
     _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 8, 2)
 
@@ -142,13 +150,14 @@ def test_list_for_validate_exceptional_ending(ftp_mock):
     # an FTPOSError ending to list_for_validate occurred last
     # time
     source_list_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST)
+        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST
+    )
     if os.path.exists(source_list_fqn):
         os.unlink(source_list_fqn)
-    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
-                             scrape.NEOSSAT_CACHE)
-    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
-                              'test_cache_listing.csv')
+    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_CACHE)
+    source_fqn = os.path.join(
+        test_main_app.TEST_DATA_DIR, 'test_cache_listing.csv'
+    )
     shutil.copy(source_fqn, cache_fqn)
     _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 17, 14)
 
@@ -159,18 +168,23 @@ class StatMock(object):
         self.st_mode = mode
 
 
-def _execute_and_check_list_for_validate(ftp_mock, source_list_fqn,
-                                         result_count, cache_count):
+def _execute_and_check_list_for_validate(
+    ftp_mock, source_list_fqn, result_count, cache_count
+):
     source_dir_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_DIR_LIST)
-    source_fqn = os.path.join(test_main_app.TEST_DATA_DIR,
-                              'test_source_dir_listing.csv')
+        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_DIR_LIST
+    )
+    source_fqn = os.path.join(
+        test_main_app.TEST_DATA_DIR, 'test_source_dir_listing.csv'
+    )
     shutil.copy(source_fqn, source_dir_fqn)
 
-    ftp_mock.return_value.__enter__.return_value.listdir. \
-        side_effect = _list_dirs
-    ftp_mock.return_value.__enter__.return_value.stat. \
-        side_effect = _entry_stats
+    ftp_mock.return_value.__enter__.return_value.listdir.side_effect = (
+        _list_dirs
+    )
+    ftp_mock.return_value.__enter__.return_value.stat.side_effect = (
+        _entry_stats
+    )
     getcwd_orig = os.getcwd
     os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
     try:
@@ -181,15 +195,18 @@ def _execute_and_check_list_for_validate(ftp_mock, source_list_fqn,
         result = mc.read_as_yaml(source_list_fqn)
         assert result is not None, 'expect a file record'
         assert len(result) == result_count, 'wrong number of entries'
-        assert f'{MOCK_DIR}/NEOS_SCI_2017213215701_cord.fits' in result, \
-            'wrong content'
+        assert (
+            f'{MOCK_DIR}/NEOS_SCI_2017213215701_cord.fits' in result
+        ), 'wrong content'
 
         cache_result = scrape._read_cache(test_config.working_directory)
         assert cache_result is not None, 'expected return value'
-        assert len(cache_result) == cache_count, \
-            'wrong number of cached entries'
-        assert f'{MOCK_DIR}/NEOS_SCI_2017213215701.fits' in cache_result, \
-            'wrong content'
+        assert (
+            len(cache_result) == cache_count
+        ), 'wrong number of cached entries'
+        assert (
+            f'{MOCK_DIR}/NEOS_SCI_2017213215701.fits' in cache_result
+        ), 'wrong content'
     finally:
         os.getcwd = getcwd_orig
 
@@ -222,14 +239,18 @@ def _list_dirs(dir_name):
     elif dir_name == '/tmp/astro/2017/127':
         return ['e.fits']
     elif dir_name == '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO':
-        return ['NEOS_SCI_2019213215700_cord.fits',
-                'NEOS_SCI_2019213215700.fits',
-                'NEOS_SCI_2019213215700_clean.fits',
-                'M32',  # new content
-                'M33']  # already in list
+        return [
+            'NEOS_SCI_2019213215700_cord.fits',
+            'NEOS_SCI_2019213215700.fits',
+            'NEOS_SCI_2019213215700_clean.fits',
+            'M32',  # new content
+            'M33',
+        ]  # already in list
     elif dir_name == MOCK_DIR:
-        return ['NEOS_SCI_2017213215701_cord.fits',
-                'NEOS_SCI_2017213215701.fits']
+        return [
+            'NEOS_SCI_2017213215701_cord.fits',
+            'NEOS_SCI_2017213215701.fits',
+        ]
     else:
         return []
 

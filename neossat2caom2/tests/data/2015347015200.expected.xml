@@ -30,7 +30,7 @@
       </caom2:provenance>
       <caom2:artifacts>
         <caom2:artifact caom2:id="ca6dd432-e2e6-4b06-8a8b-6f53a424b743">
-          <caom2:uri>ad:NEOSS/NEOS_SCI_2015347015200_clean.fits</caom2:uri>
+          <caom2:uri>cadc:NEOSSAT/NEOS_SCI_2015347015200_clean.fits</caom2:uri>
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>

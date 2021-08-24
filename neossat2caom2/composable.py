@@ -100,16 +100,18 @@ def _run():
     :return 0 if successful, -1 if there's any sort of failure. Return status
         is used by airflow for task instance management and reporting.
     """
-    builder = nbc.FileNameBuilder(NEOSSatName)
+    builder = nbc.GuessingBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
-    transferrer = tc.FtpTransfer(config.data_source)
-    return rc.run_by_todo(name_builder=builder,
-                          config=config,
-                          command_name=APPLICATION,
-                          meta_visitors=META_VISITORS,
-                          data_visitors=DATA_VISITORS,
-                          store_transfer=transferrer)
+    transferrer = tc.FtpTransfer(config.data_sources[0])
+    return rc.run_by_todo(
+        name_builder=builder,
+        config=config,
+        command_name=APPLICATION,
+        meta_visitors=META_VISITORS,
+        data_visitors=DATA_VISITORS,
+        store_transfer=transferrer,
+    )
 
 
 def run():
@@ -131,25 +133,30 @@ def _run_state():
     Ingestion is based on fully-qualified file names from the CSA ftp host,
     because those are difficult to reproduce otherwise.
     """
-    builder = nbc.FileNameBuilder(NEOSSatName)
+    builder = nbc.GuessingBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
     state = mc.State(config.state_fqn)
     start_time = state.get_bookmark(NEOS_BOOKMARK)
     temp = mc.increment_time(start_time, 0).timestamp()
     todo_list, max_timestamp = scrape.build_todo(
-        temp, config.working_directory, config.state_fqn)
+        temp, config.working_directory, config.state_fqn
+    )
     max_date = datetime.fromtimestamp(max_timestamp)
     incremental_source = data_source.IncrementalSource(todo_list)
-    transferrer = tc.FtpTransfer(config.data_source)
-    return rc.run_by_state(config=config, name_builder=builder,
-                           command_name=APPLICATION,
-                           bookmark_name=NEOS_BOOKMARK,
-                           meta_visitors=META_VISITORS,
-                           data_visitors=DATA_VISITORS,
-                           end_time=max_date, chooser=None,
-                           source=incremental_source,
-                           store_transfer=transferrer)
+    transferrer = tc.FtpTransfer(config.data_sources[0])
+    return rc.run_by_state(
+        config=config,
+        name_builder=builder,
+        command_name=APPLICATION,
+        bookmark_name=NEOS_BOOKMARK,
+        meta_visitors=META_VISITORS,
+        data_visitors=DATA_VISITORS,
+        end_time=max_date,
+        chooser=None,
+        source=incremental_source,
+        store_transfer=transferrer,
+    )
 
 
 def run_state():

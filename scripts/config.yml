@@ -35,9 +35,6 @@ retry_file_name: retries.txt
 # this file is created in the logs directory, default is 'progress.txt'
 progress_file_name: progress.txt
 #
-# ad stream value - sorry
-stream: default
-archive: NEOSS
 collection: NEOSSAT
 #
 # CADC service execution metrics
@@ -52,7 +49,9 @@ rejected_directory: /usr/src/app/rejected
 #
 state_file_name: state.yml
 interval: 600
-data_source: ftp.asc-csa.gc.ca
+data_sources:
+  - ftp.asc-csa.gc.ca
+storage_inventory_resource_id: ivo://cadc.nrc.ca/uvic/minoc
 # how to control the work that gets done
 # possible values are:
 # - scrape - read the headers, write out the xml - kind of a test mode
@@ -65,7 +64,4 @@ task_types:
   - ingest
   - modify
 features:
-  supports_composite: False
-  supports_latest_caom: False
-  use_file_names: True
-  use_urls: False
+  supports_latest_client: True

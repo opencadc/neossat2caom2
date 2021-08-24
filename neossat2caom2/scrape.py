@@ -117,16 +117,24 @@ def _append_source_listing(start_date, sidecar_dir, current):
 
     # use that cache, plus the original content listing, to finish the
     # source site listing
-    temp = _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, NEOS_DIR,
-                        current, original_dirs_list)
+    temp = _append_todo(
+        start_date,
+        sidecar_dir,
+        ASC_FTP_SITE,
+        NEOS_DIR,
+        current,
+        original_dirs_list,
+    )
     todo_list, max_date = _remove_dir_names(temp, start_date)
     logging.info(
-        f'End build_todo with {len(todo_list)} records, date {max_date}.')
+        f'End build_todo with {len(todo_list)} records, date {max_date}.'
+    )
     return todo_list, max_date
 
 
-def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
-                 original_dirs_list):
+def _append_todo(
+    start_date, sidecar_dir, ftp_site, ftp_dir, listing, original_dirs_list
+):
     try:
         with FTPHost(ftp_site, 'anonymous', '@anonymous') as ftp_host:
             dirs = ftp_host.listdir(ftp_dir)
@@ -148,8 +156,15 @@ def _append_todo(start_date, sidecar_dir, ftp_site, ftp_dir, listing,
         for entry, value in listing.items():
             if value[0] and entry not in original_dirs_list:  # is a directory
                 temp_listing.update(
-                    _append_todo(start_date, sidecar_dir, ftp_site, entry,
-                                 temp_listing, original_dirs_list))
+                    _append_todo(
+                        start_date,
+                        sidecar_dir,
+                        ftp_site,
+                        entry,
+                        temp_listing,
+                        original_dirs_list,
+                    )
+                )
                 _sidecar(entry, value, sidecar_dir)
                 original_dirs_list[entry] = value[1]
                 logging.info(f'Added results for {entry}')
@@ -180,8 +195,7 @@ def _read_cache(in_dir):
             for line in f:
                 temp = line.split(',')
                 temp_bool = False if temp[1].strip() == 'False' else True
-                content[temp[0]] = [temp_bool,
-                                    mc.to_float(temp[2].strip())]
+                content[temp[0]] = [temp_bool, mc.to_float(temp[2].strip())]
     return content
 
 
@@ -227,11 +241,14 @@ def build_todo(start_date, sidecar_dir, state_fqn):
     for subdir in sub_dirs:
         query_dir = os.path.join(NEOS_DIR, str(subdir))
         temp.update(
-            _append_todo(start_date, sidecar_dir, ASC_FTP_SITE, query_dir, {},
-                         {}))
+            _append_todo(
+                start_date, sidecar_dir, ASC_FTP_SITE, query_dir, {}, {}
+            )
+        )
     todo_list, max_date = _remove_dir_names(temp, start_date)
     logging.info(
-        f'End build_todo with {len(todo_list)} records, date {max_date}.')
+        f'End build_todo with {len(todo_list)} records, date {max_date}.'
+    )
     return todo_list, max_date
 
 
@@ -256,7 +273,8 @@ def list_for_validate(config):
 
     ts_s = mc.make_seconds(NEOSSAT_START_DATE)
     temp, ignore_max_date = _append_source_listing(
-        ts_s, config.working_directory, cached)
+        ts_s, config.working_directory, cached
+    )
     mc.write_as_yaml(temp, list_fqn)
 
     # remove the fully-qualified path names from the validator list

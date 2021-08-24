@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2021.                            (c) 2021.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,92 +62,62 @@
 #  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
 #                                       <http://www.gnu.org/licenses/>.
 #
-#  $Revision: 4 $
+#  : 4 $
 #
 # ***********************************************************************
 #
+
 import os
-import pytest
+import shutil
 
-from mock import patch
-
-from caom2 import ChecksumURI
-from neossat2caom2 import preview_augmentation, NEOSSatName
 from caom2pipe import manage_composable as mc
+from caom2pipe import name_builder_composable as nbc
+from neossat2caom2 import preview_augmentation, NEOSSatName
+import test_main_app
 
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
-TEST_OBS = '2019213215700'
-TEST_FILES = [
-    'NEOS_SCI_2019213215700.fits',
-    'NEOS_SCI_2019213215700_cor.fits',
-    'NEOS_SCI_2019213215700_cord.fits',
-]
+def test_preview_augmentation():
+    test_obs_fqn = f'{test_main_app.TEST_DATA_DIR}/2019213215700.expected.xml'
+    test_obs = mc.read_obs_from_file(test_obs_fqn)
+    assert test_obs is not None, 'expect an input'
+    assert len(test_obs.planes) == 3, 'expect 3 planes'
+    for product_id in ['raw', 'cor', 'cord']:
+        assert (
+            len(test_obs.planes[product_id].artifacts) == 1
+        ), 'wrong artifact pre-condition count'
 
+    test_file_names = [
+        'NEOS_SCI_2019213215700_cor.fits',
+        'NEOS_SCI_2019213215700.fits',
+        'NEOS_SCI_2019213215700_cord.fits',
+    ]
 
-def test_preview_aug_visit():
-    with pytest.raises(mc.CadcException):
-        preview_augmentation.visit(None)
+    test_builder = nbc.GuessingBuilder(NEOSSatName)
+    for f_name in test_file_names:
+        test_fqn = f'/test_files/{f_name}'
+        if not os.path.exists(test_fqn):
+            shutil.copy(f'{test_main_app.TEST_DATA_DIR}/{f_name}', test_fqn)
+        test_storage_name = test_builder.build(test_fqn)
+        if os.path.exists(f'/test_files/{test_storage_name.prev}'):
+            os.unlink(f'/test_files/{test_storage_name.prev}')
+        if os.path.exists(f'/test_files/{test_storage_name.thumb}'):
+            os.unlink(f'/test_files/{test_storage_name.thumb}')
 
+        kwargs = {
+            'working_directory': '/test_files',
+            'storage_name': test_storage_name,
+        }
+        test_result = preview_augmentation.visit(test_obs, **kwargs)
+        assert test_result is not None, 'expect a result'
+        assert (
+               test_result.get('artifacts') is not None
+        ), 'expect artifact count'
+        assert test_result.get('artifacts') == 2, 'wrong artifact count'
+        assert os.path.exists(f'/test_files/{test_storage_name.prev}')
+        assert os.path.exists(f'/test_files/{test_storage_name.thumb}')
 
-# def test_preview_augment_plane():
-#     for f_name in TEST_FILES:
-#         neoss_name = NEOSSatName(file_name=f_name)
-#         preview = os.path.join(TEST_DATA_DIR, neoss_name.prev)
-#         thumb = os.path.join(TEST_DATA_DIR, neoss_name.thumb)
-#         if os.path.exists(preview):
-#             os.remove(preview)
-#         if os.path.exists(thumb):
-#             os.remove(thumb)
-#         import logging
-#         test_fqn = os.path.join(TEST_DATA_DIR, f'{TEST_OBS}.fits.xml')
-#         source_fqn = os.path.join(TEST_DATA_DIR, f'test_{TEST_OBS}.fits.xml')
-#         logging.error(f'test_fqn {test_fqn}')
-#         logging.error(f'source-fqn {source_fqn}')
-#         # with open(test_fqn, 'w') as fa:
-#         #     with open(source_fqn, 'r') as fb:
-#         #         temp = fb.readlines()
-#         #     fa.writelines(temp)
-#         #     # logging.error(temp)
-#
-#         with open(test_fqn, 'r') as fa:
-#             logging.error(fa.readlines())
-#
-#
-#         test_obs = mc.read_obs_from_file(test_fqn)
-#         import logging
-#         # logging.error(test_obs)
-#         assert len(test_obs.planes[neoss_name.product_id].artifacts) == 1
-#         test_config = mc.Config()
-#         test_config.observe_execution = True
-#         test_metrics = mc.Metrics(test_config)
-#         test_observable = mc.Observable(rejected=None,
-#                                         metrics=test_metrics)
-#
-#         # assert False
-#
-#         test_kwargs = {'working_directory': TEST_DATA_DIR,
-#                        'cadc_client': None,
-#                        'observable': test_observable,
-#                        'stream': test_config.stream,
-#                        'science_file': f_name}
-#         with patch('neossat2caom2.preview_augmentation._store_smalls'):
-#             test_result = preview_augmentation.visit(test_obs, **test_kwargs)
-#             assert test_result is not None, 'expected a visit return value'
-#             assert test_result['artifacts'] == 2
-#             assert len(test_obs.planes[neoss_name.product_id].artifacts) == 3
-#
-#             if f_name == 'NEOS_SCI_2019213215700.fits':
-#                 preva = 'ad:NEOSS/2019213215700_raw_prev.png'
-#                 thumba = 'ad:NEOSS/2019213215700_raw_prev_256.png'
-#                 assert os.path.exists(preview)
-#                 assert os.path.exists(thumb)
-#                 assert test_obs.planes[neoss_name.product_id].\
-#                     artifacts[preva].content_checksum == \
-#                     ChecksumURI('md5:15828d4014363f0d615d168c75f30003'), \
-#                     'prev checksum failure'
-#                 assert test_obs.planes[neoss_name.product_id].\
-#                     artifacts[thumba].content_checksum == \
-#                     ChecksumURI('md5:20198c5ccc5a477bd77fbbbb2890a8cd'), \
-#                     'thumb checksum failure'
+    for product_id in ['raw', 'cor', 'cord']:
+        assert (
+                len(test_obs.planes[product_id].artifacts) == 3
+        ), 'wrong artifact post-condition count'
+
