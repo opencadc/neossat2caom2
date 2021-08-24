@@ -130,10 +130,10 @@ def _augment(plane, uri, fqn, product_type):
 
 
 def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
-    if storage_name.source_names[0].startswith(NEOS_DIR):
-        base_dir = working_dir
-    else:
+    if os.path.exists(storage_name.source_names[0]):
         base_dir = os.path.dirname(storage_name.source_names[0])
+    else:
+        base_dir = working_dir
 
     science_fqn = os.path.join(base_dir, storage_name.file_name)
     preview_fqn = os.path.join(base_dir, storage_name.prev)
@@ -148,7 +148,7 @@ def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
     prev_uri = storage_name.prev_uri
     thumb_uri = storage_name.thumb_uri
     _store_smalls(
-        cadc_client, preview_fqn, thumb_fqn, storage_name, observable.metrics
+        cadc_client, base_dir, storage_name, observable.metrics
     )
     _augment(plane, prev_uri, preview_fqn, ProductType.PREVIEW)
     _augment(plane, thumb_uri, thumb_fqn, ProductType.THUMBNAIL)
@@ -156,11 +156,11 @@ def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
 
 
 def _store_smalls(
-    cadc_client, preview_fqn, thumb_fqn, neoss_name, metrics
+    cadc_client, base_dir, neoss_name, metrics
 ):
     if cadc_client is not None:
-        cadc_client.put(preview_fqn, neoss_name.prev_uri, metrics)
-        cadc_client.put(thumb_fqn, neoss_name.thumb_uri, metrics)
+        cadc_client.put(base_dir, neoss_name.prev_uri, metrics)
+        cadc_client.put(base_dir, neoss_name.thumb_uri, metrics)
 
 
 def _generate_plot(fqn, dpi_factor, image_data, image_header):
