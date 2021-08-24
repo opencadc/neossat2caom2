@@ -77,6 +77,7 @@ import matplotlib.colors as colors
 
 from caom2 import Observation, ReleaseType, ProductType
 from caom2pipe import manage_composable as mc
+from neossat2caom2.scrape import NEOS_DIR
 
 
 def visit(observation, **kwargs):
@@ -131,7 +132,10 @@ def _augment(plane, uri, fqn, product_type):
 def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
     preview_fqn = os.path.join(working_dir, storage_name.prev)
     thumb_fqn = os.path.join(working_dir, storage_name.thumb)
-    science_fqn = os.path.join(working_dir, storage_name.file_name)
+    if storage_name.source_names[0].startswith(NEOS_DIR):
+        science_fqn = os.path.join(working_dir, storage_name.file_name)
+    else:
+        science_fqn = storage_name.source_names[0]
 
     image_data = fits.getdata(science_fqn, ext=0)
     image_header = fits.getheader(science_fqn, ext=0)
