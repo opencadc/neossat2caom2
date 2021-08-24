@@ -77,7 +77,6 @@ import matplotlib.colors as colors
 
 from caom2 import Observation, ReleaseType, ProductType
 from caom2pipe import manage_composable as mc
-from neossat2caom2.scrape import NEOS_DIR
 
 
 def visit(observation, **kwargs):
@@ -89,9 +88,6 @@ def visit(observation, **kwargs):
         logging.warning(
             'Visitor needs a cadc_client parameter to store images.'
         )
-    observable = kwargs.get('observable')
-    if observable is None:
-        raise mc.CadcException('Visitor needs a observable parameter.')
     storage_name = kwargs.get('storage_name')
 
     count = 0
@@ -100,11 +96,7 @@ def visit(observation, **kwargs):
         for artifact in plane.artifacts.values():
             if artifact.uri == storage_name.file_uri:
                 count += _do_prev(
-                    plane,
-                    working_dir,
-                    cadc_client,
-                    storage_name,
-                    observable,
+                    plane, working_dir, cadc_client, storage_name
                 )
             if artifact.uri.endswith('.jpg'):
                 delete_list.append(artifact.uri)
@@ -129,7 +121,7 @@ def _augment(plane, uri, fqn, product_type):
     )
 
 
-def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
+def _do_prev(plane, working_dir, cadc_client, storage_name):
     if os.path.exists(storage_name.source_names[0]):
         base_dir = os.path.dirname(storage_name.source_names[0])
     else:
@@ -145,22 +137,16 @@ def _do_prev(plane, working_dir, cadc_client, storage_name, observable):
     _generate_plot(preview_fqn, 1024, image_data, image_header)
     _generate_plot(thumb_fqn, 256, image_data, image_header)
 
-    prev_uri = storage_name.prev_uri
-    thumb_uri = storage_name.thumb_uri
-    _store_smalls(
-        cadc_client, base_dir, storage_name, observable.metrics
-    )
-    _augment(plane, prev_uri, preview_fqn, ProductType.PREVIEW)
-    _augment(plane, thumb_uri, thumb_fqn, ProductType.THUMBNAIL)
+    _store_smalls(cadc_client, base_dir, storage_name)
+    _augment(plane, storage_name.prev_uri, preview_fqn, ProductType.PREVIEW)
+    _augment(plane, storage_name.thumb_uri, thumb_fqn, ProductType.THUMBNAIL)
     return 2
 
 
-def _store_smalls(
-    cadc_client, base_dir, neoss_name, metrics
-):
+def _store_smalls(cadc_client, base_dir, neoss_name):
     if cadc_client is not None:
-        cadc_client.put(base_dir, neoss_name.prev_uri, metrics)
-        cadc_client.put(base_dir, neoss_name.thumb_uri, metrics)
+        cadc_client.put(base_dir, neoss_name.prev_uri)
+        cadc_client.put(base_dir, neoss_name.thumb_uri)
 
 
 def _generate_plot(fqn, dpi_factor, image_data, image_header):

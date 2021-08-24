@@ -70,8 +70,6 @@
 import os
 import shutil
 
-from mock import Mock
-
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 from neossat2caom2 import preview_augmentation, NEOSSatName
@@ -108,7 +106,6 @@ def test_preview_augmentation():
         kwargs = {
             'working_directory': '/test_files',
             'storage_name': test_storage_name,
-            'observable': Mock(autospec=True),
         }
         test_result = preview_augmentation.visit(test_obs, **kwargs)
         assert test_result is not None, 'expect a result'
