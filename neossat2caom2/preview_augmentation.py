@@ -122,12 +122,8 @@ def _augment(plane, uri, fqn, product_type):
 
 
 def _do_prev(plane, working_dir, cadc_client, storage_name):
-    if os.path.exists(storage_name.source_names[0]):
-        base_dir = os.path.dirname(storage_name.source_names[0])
-    else:
-        base_dir = working_dir
-
-    science_fqn = os.path.join(base_dir, storage_name.file_name)
+    science_fqn = storage_name.get_file_fqn(working_dir)
+    base_dir = os.path.dirname(science_fqn)
     preview_fqn = os.path.join(base_dir, storage_name.prev)
     thumb_fqn = os.path.join(base_dir, storage_name.thumb)
 
