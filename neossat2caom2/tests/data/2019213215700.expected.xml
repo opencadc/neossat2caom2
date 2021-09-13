@@ -61,16 +61,16 @@
                       </caom2:axis2>
                       <caom2:function>
                         <caom2:dimension>
-                          <caom2:naxis1>512</caom2:naxis1>
-                          <caom2:naxis2>512</caom2:naxis2>
+                          <caom2:naxis1>856</caom2:naxis1>
+                          <caom2:naxis2>622</caom2:naxis2>
                         </caom2:dimension>
                         <caom2:refCoord>
                           <caom2:coord1>
-                            <caom2:pix>256.0</caom2:pix>
+                            <caom2:pix>428.0</caom2:pix>
                             <caom2:val>66.59625</caom2:val>
                           </caom2:coord1>
                           <caom2:coord2>
-                            <caom2:pix>256.0</caom2:pix>
+                            <caom2:pix>311.0</caom2:pix>
                             <caom2:val>-42.995666666666665</caom2:val>
                           </caom2:coord2>
                         </caom2:refCoord>
