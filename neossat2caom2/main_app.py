@@ -485,9 +485,13 @@ def update(observation, **kwargs):
 
     headers = kwargs.get('headers')
     fqn = kwargs.get('fqn')
+    uri = kwargs.get('uri')
     product_id = None
     if fqn is not None:
         product_id = NEOSSatName.extract_product_id(os.path.basename(fqn))
+    if uri is not None:
+        ignore_scheme, ignore_path, f_name = mc.decompose_uri(uri)
+        product_id = NEOSSatName.extract_product_id(f_name)
     try:
         for plane in observation.planes.values():
             if product_id is not None and plane.product_id != product_id:
