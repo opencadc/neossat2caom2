@@ -121,7 +121,6 @@ class NEOSSatName(mc.StorageName):
             COLLECTION,
             NEOSSatName.BLANK_NAME_PATTERN,
             self._file_name,
-            archive=COLLECTION,
             entry=entry,
             scheme='cadc',
             source_names=self._source_names
@@ -152,8 +151,8 @@ class NEOSSatName(mc.StorageName):
 
     @property
     def file_uri(self):
-        """The ad URI for the file. Assumes compression."""
-        return '{}:{}/{}'.format(self.scheme, self.archive, self.file_name)
+        """The URI for the file. Assumes compression."""
+        return '{}:{}/{}'.format(self.scheme, self.collection, self.file_name)
 
     @property
     def prev(self):
