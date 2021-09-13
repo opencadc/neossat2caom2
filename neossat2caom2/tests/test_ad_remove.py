@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2021.                            (c) 2021.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,115 +62,40 @@
 #  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
 #                                       <http://www.gnu.org/licenses/>.
 #
-#  $Revision: 4 $
+#  : 4 $
 #
 # ***********************************************************************
 #
 
-from mock import patch
-
-from cadcdata import FileInfo
-from neossat2caom2 import main_app, NEOSSatName, APPLICATION
-from neossat2caom2 import COLLECTION
-from caom2pipe import manage_composable as mc
-
-import os
 import sys
-
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
-PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
-
-
-LOOKUP = {
-    '2019213173800': [
-        'NEOS_SCI_2019213173800',
-        'NEOS_SCI_2019213173800_cor',
-        'NEOS_SCI_2019213173800_cord',
-    ],
-    '2019258000140': [
-        'NEOS_SCI_2019258000140',
-        'NEOS_SCI_2019258000140_clean',
-    ],
-    '2019259111450': [
-        'NEOS_SCI_2019259111450',
-        'NEOS_SCI_2019259111450_clean',
-    ],
-    '2019213174531': [
-        'NEOS_SCI_2019213174531',
-        'NEOS_SCI_2019213174531_cor',
-        'NEOS_SCI_2019213174531_cord',
-    ],
-    '2019213215700': [
-        'NEOS_SCI_2019213215700',
-        'NEOS_SCI_2019213215700_cor',
-        'NEOS_SCI_2019213215700_cord',
-    ],
-    # dark
-    '2019267234420': ['NEOS_SCI_2019267234420_clean'],
-    # no RA, DEC keywords
-    '2015347015200': ['NEOS_SCI_2015347015200_clean'],
-    # PI Name
-    '2020255152013': ['NEOS_SCI_2020255152013_clean'],
-}
-
-
-def pytest_generate_tests(metafunc):
-    obs_id_list = []
-    for ii in LOOKUP:
-        obs_id_list.append(ii)
-    metafunc.parametrize('test_name', obs_id_list)
+from mock import patch
+from caom2pipe import manage_composable as mc
+from neossat2caom2 import APPLICATION, main_app
+import test_main_app
 
 
 @patch('caom2utils.data_util.StorageClientWrapper')
-def test_main_app(data_client_mock, test_name):
-    basename = os.path.basename(test_name)
-    neos_name = NEOSSatName(file_name=basename, entry=basename)
-    output_file = '{}/{}.actual.xml'.format(TEST_DATA_DIR, basename)
-    obs_path = '{}/{}'.format(
-        TEST_DATA_DIR, '{}.expected.xml'.format(neos_name.obs_id)
+def test_in(data_client_mock):
+    data_client_mock.return_value.info.side_effect = (
+        test_main_app.cadcinfo_mock
     )
 
-    data_client_mock.return_value.info.side_effect = cadcinfo_mock
+    obs_id = '2021212015920'
+    input_file = f'{test_main_app.TEST_DATA_DIR}/{obs_id}.in.xml'
+    output_file = f'{test_main_app.TEST_DATA_DIR}/{obs_id}.actual.xml'
+    expected_file = f'{test_main_app.TEST_DATA_DIR}/{obs_id}.expected.xml'
+
     sys.argv = (
-        '{} --no_validate --local {} --observation {} {} -o {} '
-        '--plugin {} --module {} --lineage {}'.format(
-            APPLICATION,
-            _get_local(test_name),
-            COLLECTION,
-            test_name,
-            output_file,
-            PLUGIN,
-            PLUGIN,
-            _get_lineage(test_name),
-        )
+        f'{APPLICATION} --no_validate '
+        f'--local {test_main_app.TEST_DATA_DIR}/NEOS_SCI_{obs_id}.fits.header '
+        f'-i {input_file} '
+        f'-o {output_file} '
+        f'--plugin {test_main_app.PLUGIN} --module {test_main_app.PLUGIN} '
+        f'--lineage raw/cadc:NEOSSAT/NEOS_SCI_{obs_id}.fits'
     ).split()
     print(sys.argv)
     main_app.to_caom2()
 
-    compare_result = mc.compare_observations(output_file, obs_path)
+    compare_result = mc.compare_observations(output_file, expected_file)
     if compare_result is not None:
         raise AssertionError(compare_result)
-    # assert False  # cause I want to see logging messages
-
-
-def cadcinfo_mock(uri):
-    return FileInfo(id=uri, file_type='application/fits')
-
-
-def _get_lineage(obs_id):
-    result = ''
-    for ii in LOOKUP[obs_id]:
-        product_id = NEOSSatName.extract_product_id(ii)
-        fits = mc.get_lineage(
-            COLLECTION, product_id, '{}.fits'.format(ii), 'cadc'
-        )
-        result = '{} {}'.format(result, fits)
-    return result
-
-
-def _get_local(obs_id):
-    result = ''
-    for ii in LOOKUP[obs_id]:
-        result = '{} {}/{}.fits.header'.format(result, TEST_DATA_DIR, ii)
-    return result

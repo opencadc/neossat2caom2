@@ -483,16 +483,19 @@ def update(observation, **kwargs):
     logging.debug('Begin update.')
     mc.check_param(observation, Observation)
 
-    headers = None
-    if 'headers' in kwargs:
-        headers = kwargs['headers']
-    fqn = None
-    if 'fqn' in kwargs:
-        fqn = kwargs['fqn']
-
+    headers = kwargs.get('headers')
+    fqn = kwargs.get('fqn')
+    product_id = None
+    if fqn is not None:
+        product_id = NEOSSatName.extract_product_id(os.path.basename(fqn))
     try:
         for plane in observation.planes.values():
+            if product_id is not None and plane.product_id != product_id:
+                continue
+            remove_list = []
             for artifact in plane.artifacts.values():
+                if artifact.uri.startswith('ad:NEOSS/'):
+                    remove_list.append(artifact.uri)
                 temp_parts = TypedOrderedDict(
                     Part,
                 )
@@ -519,6 +522,10 @@ def update(observation, **kwargs):
                             chunk.time_axis = None
                 for part in temp_parts.values():
                     artifact.parts.add(part)
+
+            for entry in list(set(remove_list)):
+                logging.warning(f'Removing {entry} from artifacts.')
+                plane.artifacts.pop(entry)
         logging.debug('Done update.')
     except Exception as e:
         logging.error(e)
