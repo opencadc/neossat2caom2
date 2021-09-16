@@ -38,8 +38,8 @@ In an empty directory (the 'working directory'), on a machine with Docker instal
 
 
    ```
-   wget https://raw.github.com/opencadc-metadata-curation/neossat2caom2/master/scripts/config.yml
-   wget https://raw.github.com/opencadc-metadata-curation/neossat2caom2/master/scripts/neossat_run.sh   
+   wget https://raw.github.com/opencadc/neossat2caom2/master/scripts/config.yml
+   wget https://raw.github.com/opencadc/neossat2caom2/master/scripts/neossat_run.sh   
    ```
   
 1. Near the end of the file, modify the config.yml file to have:
