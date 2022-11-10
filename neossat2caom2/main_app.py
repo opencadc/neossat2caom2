@@ -67,30 +67,18 @@
 # ***********************************************************************
 #
 
-import importlib
-import logging
 import math
-import os
-import sys
-import traceback
 
-from caom2 import Observation, CalibrationLevel, Axis, CoordAxis1D
+from caom2 import CalibrationLevel, Axis, CoordAxis1D
 from caom2 import RefCoord, SpectralWCS, CoordRange1D, Chunk, TypedOrderedDict
 from caom2 import CoordFunction2D, Dimension2D, Coord2D, ProductType, Part
-from caom2utils import ObsBlueprint, get_gen_proc_arg_parser, gen_proc
-from caom2utils import WcsParser
+from caom2utils.caom2blueprint import FitsWcsParser, update_artifact_meta
 from caom2pipe import astro_composable as ac
+from caom2pipe.caom_composable import TelescopeMapping
 from caom2pipe import manage_composable as mc
 
 
-__all__ = [
-    'neossat_main_app',
-    'update',
-    'NEOSSatName',
-    'COLLECTION',
-    'APPLICATION',
-    'to_caom2',
-]
+__all__ = ['APPLICATION', 'COLLECTION', 'NEOSSatMapping', 'NEOSSatName']
 
 
 APPLICATION = 'neossat2caom2'
@@ -103,28 +91,8 @@ class NEOSSatName(mc.StorageName):
     - support uncompressed files in storage
     """
 
-    BLANK_NAME_PATTERN = '*'
-
-    def __init__(self, file_name, entry):
-        self._file_name = file_name
-        if '/' in entry:
-            self._ftp_fqn = file_name
-            self._source_names = [entry]
-        else:
-            self._source_names = [self._file_name]
-        self._obs_id = NEOSSatName.remove_extensions(
-            NEOSSatName.extract_obs_id(self._file_name)
-        )
-        self._product_id = NEOSSatName.extract_product_id(self._file_name)
-        super(NEOSSatName, self).__init__(
-            self._obs_id,
-            COLLECTION,
-            NEOSSatName.BLANK_NAME_PATTERN,
-            self._file_name,
-            entry=entry,
-            scheme='cadc',
-            source_names=self._source_names
-        )
+    def __init__(self, file_name, source_names):
+        super().__init__(file_name=file_name, source_names=source_names)
         self._logger.debug(self)
 
     def __str__(self):
@@ -135,25 +103,6 @@ class NEOSSatName(mc.StorageName):
 
     def is_valid(self):
         return True
-
-    @property
-    def destination_uris(self):
-        return [self.file_uri]
-
-    @property
-    def product_id(self):
-        return self._product_id
-
-    @property
-    def file_name(self):
-        """The file name."""
-        return self._file_name
-
-    @property
-    def file_uri(self):
-        """The URI for the file. Assumes compression."""
-        return '{}:{}/{}'.format(self.scheme, self.collection, self.file_name)
-
     @property
     def prev(self):
         """The preview file name for the file."""
@@ -171,6 +120,15 @@ class NEOSSatName(mc.StorageName):
             .replace('.header', '')
             .replace('.gz', '')
         )
+
+    def set_file_id(self):
+        self._file_id = NEOSSatName.remove_extensions(self._file_name)
+
+    def set_obs_id(self):
+        self._obs_id = NEOSSatName.extract_obs_id(self._file_id)
+
+    def set_product_id(self):
+        self._product_id = NEOSSatName.extract_product_id(self._file_id)
 
     @staticmethod
     def extract_obs_id(value):
@@ -202,307 +160,264 @@ class NEOSSatName(mc.StorageName):
         return '.png' in entry
 
 
-def get_artifact_product_type(header):
-    result = ProductType.SCIENCE
-    obs_intent = get_obs_intent(header)
-    if obs_intent == 'calibration':
-        result = ProductType.CALIBRATION
-    return result
+class NEOSSatMapping(TelescopeMapping):
 
+    def __init__(self, storage_name, headers, clients):
+        super().__init__(storage_name, headers, clients)
 
-def get_calibration_level(uri):
-    cal_level = CalibrationLevel.RAW_STANDARD
-    if 'clean' in uri or 'cor' in uri:
-        cal_level = CalibrationLevel.CALIBRATED
-    return cal_level
+    def get_artifact_product_type(self, ext):
+        result = ProductType.SCIENCE
+        obs_intent = self.get_obs_intent(ext)
+        if obs_intent == 'calibration':
+            result = ProductType.CALIBRATION
+        return result
 
+    def get_calibration_level(self, ext):
+        cal_level = CalibrationLevel.RAW_STANDARD
+        if 'clean' in self._storage_name.file_uri or 'cor' in self._storage_name.file_uri:
+            cal_level = CalibrationLevel.CALIBRATED
+        return cal_level
 
-def get_coord1_pix(header):
-    ccdsec = header.get('CCDSEC')
-    pix = ccdsec.split(',')[0].split(':')[1]
-    return pix
+    def get_coord1_pix(self, ext):
+        ccdsec = self._headers[ext].get('CCDSEC')
+        pix = ccdsec.split(',')[0].split(':')[1]
+        return pix
 
+    def get_coord2_pix(self, ext):
+        ccdsec = self._headers[ext].get('CCDSEC')
+        pix = ccdsec.split(',')[1].split(':')[1]
+        return pix
 
-def get_coord2_pix(header):
-    ccdsec = header.get('CCDSEC')
-    pix = ccdsec.split(',')[1].split(':')[1]
-    return pix
+    def get_dec(self, ext):
+        ra_deg_ignore, dec_deg = self._get_position(ext)
+        return dec_deg
 
+    def get_instrument_keywords(self, ext):
+        mode = self._get_mode(ext)
+        # the blueprint splits for separate keywords on spaces
+        result = mode.replace(' ', '')
+        return result
 
-def get_dec(header):
-    ra_deg_ignore, dec_deg = _get_position(header)
-    return dec_deg
+    def get_obs_intent(self, ext):
+        # DB 17-10-19
+        # For Observation.intent, ignore the INTENT keyword now.  Instead,
+        # if MODE value contains “FINE_POINT” or “FINE_SLEW”:
+        #   Observation.intent = ‘science’.
+        # else:
+        #   Observation.intent = ‘calibration’.
+        # Don’t do an exact match since the values have numerical components,
+        # e.g. “16 - FINE_POINT”.   I haven’t come across a file that does NOT have
+        # the MODE keyword (unlike INTENT) - but not sure what to set the ‘intent’
+        # to if there isn’t one.  I guess ‘science’ like caom2utils does?
 
+        # Just in case there are observations with OBJECT = DARK but also with
+        # FINE_POINT or FINE_SLEW modes, in get_obs_type set Observation.intent
+        # to ‘calibration’ if this function finds “result =  ‘dark’ “.   i.e. add
+        # code after the “result = result.lower()” line to set
+        # Observation.intent = ‘calibration’.
 
-def get_instrument_keywords(header):
-    mode = _get_mode(header)
-    # the blueprint splits for separate keywords on spaces
-    result = mode.replace(' ', '')
-    return result
+        # According to Dave Balam these are all calibration:   FINE_SETTLE,
+        # ST_REACQUIRE and RATE_BRAKE, ST_ACQUIRE, EKF_SETTLE, 21 - DESAT,
+        # COARSE_SETTLE, COARSE_BRAKE, COURSE_SLEW
+        # Dave Balam also said this one appears on occasion:  XX - N/A” TBD
 
+        # Please add “FINE_HOLD” as a 3rd string for a ‘science’ observation.
 
-def get_obs_intent(header):
-    # DB 17-10-19
-    # For Observation.intent, ignore the INTENT keyword now.  Instead,
-    # if MODE value contains “FINE_POINT” or “FINE_SLEW”:
-    #   Observation.intent = ‘science’.
-    # else:
-    #   Observation.intent = ‘calibration’.
-    # Don’t do an exact match since the values have numerical components,
-    # e.g. “16 - FINE_POINT”.   I haven’t come across a file that does NOT have
-    # the MODE keyword (unlike INTENT) - but not sure what to set the ‘intent’
-    # to if there isn’t one.  I guess ‘science’ like caom2utils does?
+        result = 'calibration'
+        mode = self._get_mode(ext)
+        if mode is not None and (
+            'FINE_POINT' in mode or 'FINE_SLEW' in mode or 'FINE_HOLD' in mode
+        ):
+            obs_type = self.get_obs_type(ext)
+            if obs_type != 'dark':
+                result = 'science'
+        return result
 
-    # Just in case there are observations with OBJECT = DARK but also with
-    # FINE_POINT or FINE_SLEW modes, in get_obs_type set Observation.intent
-    # to ‘calibration’ if this function finds “result =  ‘dark’ “.   i.e. add
-    # code after the “result = result.lower()” line to set
-    # Observation.intent = ‘calibration’.
+    def get_obs_type(self, ext):
+        # DB 18-10-19
+        # And Dave thinks that if MODE contains the string “DESAT” then that
+        # observation is going to have an observation.type of ‘dark’.  So maybe
+        # change get_obs_type() to:
 
-    # According to Dave Balam these are all calibration:   FINE_SETTLE,
-    # ST_REACQUIRE and RATE_BRAKE, ST_ACQUIRE, EKF_SETTLE, 21 - DESAT,
-    # COARSE_SETTLE, COARSE_BRAKE, COURSE_SLEW
-    # Dave Balam also said this one appears on occasion:  XX - N/A” TBD
+        # def get_obs_type(header):
+        #    result = header.get(‘OBJECT’)
+        #    mode = header.get(‘MODE’)
+        #    if “DESAT” in mode:
+        #        result = ‘DARK’
+        #    if result is not None and result == ‘DARK’:
+        #        result = result.lower()
+        #    else:
+        #        result = ‘object’
+        #    return result
+        # (I wonder if ‘dark’ is ever the OBJECT value instead of ‘DARK’?
+        # AS always put the object search string in lower case.  I’ll have to try
+        # an ADQL query…)
 
-    # Please add “FINE_HOLD” as a 3rd string for a ‘science’ observation.
-
-    result = 'calibration'
-    mode = _get_mode(header)
-    if mode is not None and (
-        'FINE_POINT' in mode or 'FINE_SLEW' in mode or 'FINE_HOLD' in mode
-    ):
-        obs_type = get_obs_type(header)
-        if obs_type != 'dark':
-            result = 'science'
-    return result
-
-
-def get_obs_type(header):
-    # DB 18-10-19
-    # And Dave thinks that if MODE contains the string “DESAT” then that
-    # observation is going to have an observation.type of ‘dark’.  So maybe
-    # change get_obs_type() to:
-
-    # def get_obs_type(header):
-    #    result = header.get(‘OBJECT’)
-    #    mode = header.get(‘MODE’)
-    #    if “DESAT” in mode:
-    #        result = ‘DARK’
-    #    if result is not None and result == ‘DARK’:
-    #        result = result.lower()
-    #    else:
-    #        result = ‘object’
-    #    return result
-    # (I wonder if ‘dark’ is ever the OBJECT value instead of ‘DARK’?
-    # AS always put the object search string in lower case.  I’ll have to try
-    # an ADQL query…)
-
-    mode = _get_mode(header)
-    if 'DESAT' in mode:
-        result = 'dark'
-    else:
-        obj = header.get('OBJECT')
-        if obj is not None and (obj == 'DARK' or obj == 'dark'):
-            result = obj.lower()
+        mode = self._get_mode(ext)
+        if 'DESAT' in mode:
+            result = 'dark'
         else:
-            result = 'object'
-    return result
+            obj = self._headers[ext].get('OBJECT')
+            if obj is not None and (obj == 'DARK' or obj == 'dark'):
+                result = obj.lower()
+            else:
+                result = 'object'
+        return result
 
+    def get_plane_data_release(self, ext):
+        result = self._headers[ext].get('RELEASE')
+        if result is None:
+            result = self._headers[ext].get('DATE-OBS')
+        return result
 
-def get_plane_data_release(header):
-    result = header.get('RELEASE')
-    if result is None:
-        result = header.get('DATE-OBS')
-    return result
+    def get_position_axis_function_naxis1(self, ext):
+        result = mc.to_int(self._headers[ext].get('NAXIS1'))
+        if result is not None:
+            result = result / 2.0
+        return result
 
+    def get_position_axis_function_naxis2(self, ext):
+        result = mc.to_int(self._headers[ext].get('NAXIS2'))
+        if result is not None:
+            result = result / 2.0
+        return result
 
-def get_position_axis_function_naxis1(header):
-    result = mc.to_int(header.get('NAXIS1'))
-    if result is not None:
-        result = result / 2.0
-    return result
+    def get_ra(self, ext):
+        ra_deg, dec_deg_ignore = self._get_position(ext)
+        return ra_deg
 
+    def get_target_moving(self, ext):
+        result = True
+        moving = self._headers[ext].get('MOVING')
+        if moving == 'F':
+            result = False
+        return result
 
-def get_position_axis_function_naxis2(header):
-    result = mc.to_int(header.get('NAXIS2'))
-    if result is not None:
-        result = result / 2.0
-    return result
+    def get_target_type(self, ext):
+        result = self._headers[ext].get('TARGTYPE')
+        if result is not None:
+            result = result.lower()
+        return result
 
+    def get_time_delta(self, ext):
+        exptime = mc.to_float(self._headers[ext].get('EXPOSURE'))  # in s
+        return exptime / (24.0 * 3600.0)
 
-def get_ra(header):
-    ra_deg, dec_deg_ignore = _get_position(header)
-    return ra_deg
+    def get_time_function_val(self, ext):
+        time_string = self._headers[ext].get('DATE-OBS')
+        return ac.get_datetime(time_string)
 
+    def _get_energy(self, ext):
+        # DB 24-09-19
+        # if bandpass IS None: set min_wl to 0.4, max_wl to 0.9 (microns)
+        min_wl = 0.4
+        max_wl = 0.9
+        # header units are Angstroms
+        bandpass = self._headers[ext].get('BANDPASS')
+        if bandpass is not None:
+            temp = bandpass.split(',')
+            min_wl = mc.to_float(temp[0]) / 1e4
+            max_wl = mc.to_float(temp[1]) / 1e4
+        return min_wl, max_wl
 
-def get_target_moving(header):
-    result = True
-    moving = header.get('MOVING')
-    if moving == 'F':
-        result = False
-    return result
+    def _get_mode(self, ext):
+        return self._headers[ext].get('MODE')
 
+    def _get_position(self, ext):
+        ra = self._headers[ext].get('RA')
+        dec = self._headers[ext].get('DEC')
+        if ra is None and dec is None:
+            # DB 25-09-19
+            # Looking at other sample headers for a bunch of files OBJCTRA and
+            # OBJCTDEC are always the same as RA and DEC so use those if RA and/or
+            # DEC are missing  Note OBJCRA/OBJCTDEC do not have ‘:’ delimiters
+            # between hours(degrees)/minutes/seconds.
+            ra_temp = self._headers[ext].get('OBJCTRA')
+            dec_temp = self._headers[ext].get('OBJCTDEC')
+            ra = ra_temp.replace(' ', ':')
+            dec = dec_temp.replace(' ', ':')
+        ra = None if ra == 'TBD' else ra
+        dec = None if dec == 'TBD' else dec
+        if ra is not None and dec is not None:
+            ra, dec = ac.build_ra_dec_as_deg(ra, dec)
+        return ra, dec
 
-def get_target_type(header):
-    result = header.get('TARGTYPE')
-    if result is not None:
-        result = result.lower()
-    return result
+    def accumulate_blueprint(self, bp, applicaton=None):
+        """Configure the telescope-specific ObsBlueprint at the CAOM model Observation level.
 
+        Guidance for construction is available from this doc:
+        https://docs.google.com/document/d/1Z84x9t2iCK72j3-u6LSejYiDi58097oP4PY1up0axjI/edit#
+        """
+        super().accumulate_blueprint(bp, APPLICATION)
 
-def get_time_delta(header):
-    exptime = mc.to_float(header.get('EXPOSURE'))  # in s
-    return exptime / (24.0 * 3600.0)
+        bp.set('Observation.intent', 'get_obs_intent()')
+        # DB 24-09-19
+        # If OBSTYPE not in header, set target.type = ‘object’
+        # If observation is a 'DARK', set target.type = 'dark'
+        bp.set('Observation.type', 'get_obs_type()')
+        bp.clear('Observation.instrument.name')
+        bp.add_attribute('Observation.instrument.name', 'INSTRUME')
+        # DB 24-09-19
+        # If INSTRUME not in header, set Observation.instrument.name =
+        # ‘NEOSSat_Science’
+        bp.set_default('Observation.instrument.name', 'NEOSSat_Science')
+        # DB 17-10-19
+        # Set Observation.instrument.keywords to the value of the MODE keyword.
+        bp.set('Observation.instrument.keywords', 'get_instrument_keywords()')
+        bp.set('Observation.target.type', 'get_target_type()')
+        bp.set('Observation.target.moving', 'get_target_moving()')
+        bp.clear('Observation.proposal.id')
+        bp.add_attribute('Observation.proposal.id', 'PROP_ID')
+        bp.clear('Observation.proposal.pi')
+        bp.add_attribute('Observation.proposal.pi', 'PI_NAME')
+        bp.clear('Observation.proposal.title')
+        bp.add_attribute('Observation.proposal.title', 'TITLE')
 
+        bp.clear('Plane.metaRelease')
+        bp.add_attribute('Plane.metaRelease', 'DATE-OBS')
+        bp.set('Plane.dataRelease', 'get_plane_data_release()')
+        bp.set('Plane.dataProductType', 'image')
+        bp.set('Plane.calibrationLevel', 'get_calibration_level()')
+        bp.clear('Plane.provenance.name')
+        bp.add_attribute('Plane.provenance.name', 'CONV_SW')
+        bp.clear('Plane.provenance.version')
+        bp.add_attribute('Plane.provenance.version', 'CONV_VER')
+        bp.clear('Plane.provenance.producer')
+        bp.add_attribute('Plane.provenance.producer', 'CREATOR')
+        bp.clear('Plane.provenance.runID')
+        bp.add_attribute('Plane.provenance.runID', 'RUNID')
 
-def get_time_function_val(header):
-    time_string = header.get('DATE-OBS')
-    return ac.get_datetime(time_string)
+        bp.set('Artifact.releaseType', 'data')
+        bp.set('Artifact.productType', 'get_artifact_product_type()')
 
+        bp.configure_time_axis(3)
+        bp.set('Chunk.time.axis.axis.ctype', 'TIME')
+        bp.set('Chunk.time.axis.axis.cunit', 'd')
+        bp.set('Chunk.time.axis.function.naxis', '1')
+        bp.set('Chunk.time.axis.function.delta', 'get_time_delta()')
+        bp.set('Chunk.time.axis.function.refCoord.pix', '0.5')
+        bp.set('Chunk.time.axis.function.refCoord.val', 'get_time_function_val()')
+        bp.clear('Chunk.time.exposure')
+        bp.add_attribute('Chunk.time.exposure', 'EXPOSURE')
 
-def _get_energy(header):
-    # DB 24-09-19
-    # if bandpass IS None: set min_wl to 0.4, max_wl to 0.9 (microns)
-    min_wl = 0.4
-    max_wl = 0.9
-    # header units are Angstroms
-    bandpass = header.get('BANDPASS')
-    if bandpass is not None:
-        temp = bandpass.split(',')
-        min_wl = mc.to_float(temp[0]) / 1e4
-        max_wl = mc.to_float(temp[1]) / 1e4
-    return min_wl, max_wl
+        bp.configure_polarization_axis(5)
+        bp.configure_observable_axis(6)
 
+        self._logger.debug('Done accumulate_bp.')
 
-def _get_mode(header):
-    return header.get('MODE')
-
-
-def _get_position(header):
-    ra = header.get('RA')
-    dec = header.get('DEC')
-    if ra is None and dec is None:
-        # DB 25-09-19
-        # Looking at other sample headers for a bunch of files OBJCTRA and
-        # OBJCTDEC are always the same as RA and DEC so use those if RA and/or
-        # DEC are missing  Note OBJCRA/OBJCTDEC do not have ‘:’ delimiters
-        # between hours(degrees)/minutes/seconds.
-        ra_temp = header.get('OBJCTRA')
-        dec_temp = header.get('OBJCTDEC')
-        ra = ra_temp.replace(' ', ':')
-        dec = dec_temp.replace(' ', ':')
-    ra = None if ra == 'TBD' else ra
-    dec = None if dec == 'TBD' else dec
-    if ra is not None and dec is not None:
-        ra, dec = ac.build_ra_dec_as_deg(ra, dec)
-    return ra, dec
-
-
-def accumulate_bp(bp, uri):
-    """Configure the telescope-specific ObsBlueprint at the CAOM model
-    Observation level.
-
-    Guidance for construction is available from this doc:
-    https://docs.google.com/document/d/1Z84x9t2iCK72j3-u6LSejYiDi58097oP4PY1up0axjI/edit#
-    """
-
-    logging.debug('Begin accumulate_bp.')
-
-    bp.set('Observation.intent', 'get_obs_intent(header)')
-    # DB 24-09-19
-    # If OBSTYPE not in header, set target.type = ‘object’
-    # If observation is a 'DARK', set target.type = 'dark'
-    bp.set('Observation.type', 'get_obs_type(header)')
-
-    bp.clear('Observation.instrument.name')
-    bp.add_fits_attribute('Observation.instrument.name', 'INSTRUME')
-    # DB 24-09-19
-    # If INSTRUME not in header, set Observation.instrument.name =
-    # ‘NEOSSat_Science’
-    bp.set_default('Observation.instrument.name', 'NEOSSat_Science')
-    # DB 17-10-19
-    # Set Observation.instrument.keywords to the value of the MODE keyword.
-    bp.set(
-        'Observation.instrument.keywords', 'get_instrument_keywords(header)'
-    )
-
-    bp.set('Observation.target.type', 'get_target_type(header)')
-    bp.set('Observation.target.moving', 'get_target_moving(header)')
-
-    bp.clear('Observation.proposal.id')
-    bp.add_fits_attribute('Observation.proposal.id', 'PROP_ID')
-    bp.clear('Observation.proposal.pi')
-    bp.add_fits_attribute('Observation.proposal.pi', 'PI_NAME')
-    bp.clear('Observation.proposal.title')
-    bp.add_fits_attribute('Observation.proposal.title', 'TITLE')
-
-    bp.clear('Plane.metaRelease')
-    bp.add_fits_attribute('Plane.metaRelease', 'DATE-OBS')
-    bp.set('Plane.dataRelease', 'get_plane_data_release(header)')
-
-    bp.set('Plane.dataProductType', 'image')
-    bp.set('Plane.calibrationLevel', 'get_calibration_level(uri)')
-
-    bp.clear('Plane.provenance.name')
-    bp.add_fits_attribute('Plane.provenance.name', 'CONV_SW')
-    bp.clear('Plane.provenance.version')
-    bp.add_fits_attribute('Plane.provenance.version', 'CONV_VER')
-    bp.clear('Plane.provenance.producer')
-    bp.add_fits_attribute('Plane.provenance.producer', 'CREATOR')
-    bp.clear('Plane.provenance.runID')
-    bp.add_fits_attribute('Plane.provenance.runID', 'RUNID')
-
-    bp.set_default('Artifact.releaseType', 'data')
-    bp.set('Artifact.productType', 'get_artifact_product_type(header)')
-
-    bp.configure_time_axis(3)
-    bp.set('Chunk.time.axis.axis.ctype', 'TIME')
-    bp.set('Chunk.time.axis.axis.cunit', 'd')
-    bp.set('Chunk.time.axis.function.naxis', '1')
-    bp.set('Chunk.time.axis.function.delta', 'get_time_delta(header)')
-    bp.set('Chunk.time.axis.function.refCoord.pix', '0.5')
-    bp.set(
-        'Chunk.time.axis.function.refCoord.val',
-        'get_time_function_val(header)',
-    )
-    bp.clear('Chunk.time.exposure')
-    bp.add_fits_attribute('Chunk.time.exposure', 'EXPOSURE')
-
-    bp.configure_polarization_axis(5)
-    bp.configure_observable_axis(6)
-
-    logging.debug('Done accumulate_bp.')
-
-
-def update(observation, **kwargs):
-    """Called to fill multiple CAOM model elements and/or attributes, must
-    have this signature for import_module loading and execution.
-
-    :param observation A CAOM Observation model instance.
-    :param **kwargs Everything else."""
-    logging.debug('Begin update.')
-    mc.check_param(observation, Observation)
-
-    headers = kwargs.get('headers')
-    fqn = kwargs.get('fqn')
-    uri = kwargs.get('uri')
-    product_id = None
-    if fqn is not None:
-        product_id = NEOSSatName.extract_product_id(os.path.basename(fqn))
-    if uri is not None:
-        ignore_scheme, ignore_path, f_name = mc.decompose_uri(uri)
-        product_id = NEOSSatName.extract_product_id(f_name)
-    try:
+    def update(self, observation, file_info):
+        """Called to fill multiple CAOM model elements and/or attributes. """
+        self._logger.error('Begin update.')
         for plane in observation.planes.values():
-            if product_id is not None and plane.product_id != product_id:
+            if plane.product_id != self._storage_name.product_id:
                 continue
-            remove_list = []
             for artifact in plane.artifacts.values():
-                if artifact.uri.startswith('ad:NEOSS/'):
-                    remove_list.append(artifact.uri)
-                temp_parts = TypedOrderedDict(
-                    Part,
-                )
+                self._logger.error(f'sn {self._storage_name.file_uri} artifact {artifact.uri}')
+                if self._storage_name.file_uri == artifact.uri:
+                    # TODO why isn't this condition a continue??????
+                    self._logger.error(file_info)
+                    update_artifact_meta(artifact, file_info)
+                temp_parts = TypedOrderedDict(Part,)
                 # need to rename the BINARY TABLE extensions, which have
                 # differently telemetry, and remove their chunks
                 for part_key in ['1', '2', '3', '4', '5']:
@@ -510,7 +425,7 @@ def update(observation, **kwargs):
                         hdu_count = mc.to_int(part_key)
                         temp = artifact.parts.pop(part_key)
                         temp.product_type = ProductType.AUXILIARY
-                        temp.name = headers[hdu_count].get('EXTNAME')
+                        temp.name = self._headers[hdu_count].get('EXTNAME')
                         while len(temp.chunks) > 0:
                             temp.chunks.pop()
                         temp_parts.add(temp)
@@ -519,186 +434,109 @@ def update(observation, **kwargs):
                         part.product_type = artifact.product_type
                         for chunk in part.chunks:
                             chunk.product_type = artifact.product_type
-                            _build_chunk_energy(chunk, headers)
-                            _build_chunk_position(
-                                chunk, headers, observation.observation_id
-                            )
+                            self._build_chunk_energy(chunk)
+                            self._build_chunk_position(chunk, observation.observation_id)
                             chunk.time_axis = None
                 for part in temp_parts.values():
                     artifact.parts.add(part)
+        self._logger.debug('Done update.')
+        return observation
 
-            for entry in list(set(remove_list)):
-                logging.warning(f'Removing {entry} from artifacts.')
-                plane.artifacts.pop(entry)
-        logging.debug('Done update.')
-    except Exception as e:
-        logging.error(e)
-        logging.debug(traceback.format_exc())
-        observation = None
-    return observation
+    def _build_chunk_energy(self, chunk):
+        # DB 18-09-19
+        # NEOSSat folks wanted the min/max wavelengths in the BANDPASS keyword to
+        # be used as the upper/lower wavelengths.  BANDPASS = ‘4000,9000’ so
+        # ref_coord1 = RefCoord(0.5, 4000) and ref_coord2 = RefCoord(1.5, 9000).
+        # The WAVELENG value is not used for anything since they opted to do it
+        # this way.  They interpret WAVELENG as being the wavelengh of peak
+        # throughput of the system I think.
 
+        min_wl, max_wl = self._get_energy(0)
+        axis = CoordAxis1D(axis=Axis(ctype='WAVE', cunit='um'))
+        if min_wl is not None and max_wl is not None:
+            ref_coord1 = RefCoord(0.5, min_wl)
+            ref_coord2 = RefCoord(1.5, max_wl)
+            axis.range = CoordRange1D(ref_coord1, ref_coord2)
 
-def _build_chunk_energy(chunk, headers):
-    # DB 18-09-19
-    # NEOSSat folks wanted the min/max wavelengths in the BANDPASS keyword to
-    # be used as the upper/lower wavelengths.  BANDPASS = ‘4000,9000’ so
-    # ref_coord1 = RefCoord(0.5, 4000) and ref_coord2 = RefCoord(1.5, 9000).
-    # The WAVELENG value is not used for anything since they opted to do it
-    # this way.  They interpret WAVELENG as being the wavelengh of peak
-    # throughput of the system I think.
+            # DB 24-09-19
+            # If FILTER not in header, set filter_name = ‘CLEAR’
+            filter_name = self._headers[0].get('FILTER', 'CLEAR')
 
-    min_wl, max_wl = _get_energy(headers[0])
-    axis = CoordAxis1D(axis=Axis(ctype='WAVE', cunit='um'))
-    if min_wl is not None and max_wl is not None:
-        ref_coord1 = RefCoord(0.5, min_wl)
-        ref_coord2 = RefCoord(1.5, max_wl)
-        axis.range = CoordRange1D(ref_coord1, ref_coord2)
+            # DB 24-09-19
+            # if wavelength IS None, wl = 0.6 microns, and resolving_power is
+            # always determined.
+            wavelength = self._headers[0].get('WAVELENG', 6000)
+            wl = wavelength / 1e4  # everything in microns
+            resolving_power = wl / (max_wl - min_wl)
+            energy = SpectralWCS(
+                axis=axis,
+                specsys='TOPOCENT',
+                ssyssrc='TOPOCENT',
+                ssysobs='TOPOCENT',
+                bandpass_name=filter_name,
+                resolving_power=resolving_power,
+            )
+            chunk.energy = energy
 
-        # DB 24-09-19
-        # If FILTER not in header, set filter_name = ‘CLEAR’
-        filter_name = headers[0].get('FILTER', 'CLEAR')
+    def _build_chunk_position(self, chunk, obs_id):
+        # DB 18-08-19
+        # Ignoring rotation for now:  Use CRVAL1 = RA from header, CRVAL2 = DEC
+        # from header.  NAXIS1/NAXIS2 values gives number of pixels along RA/DEC
+        # axes (again, ignoring rotation) and assume CRPIX1 = NAXIS1/2.0 and
+        # CRPIX2 = NAXIS2/2.0 (i.e. in centre of image).   XBINNING/YBINNING
+        # give binning values along RA/DEC axes.   CDELT1 (scale in
+        # degrees/pixel; it’s 3 arcsec/unbinned pixel)= 3.0*XBINNING/3600.0
+        # CDELT2 = 3.0*YBINNING/3600.0.  Set CROTA2=0.0
+        header = self._headers[0]
+        ra = self.get_ra(0)
+        dec = self.get_dec(0)
+        if ra is None or dec is None:
+            self._logger.warning(f'No position information for {obs_id}')
+            chunk.naxis = None
+        else:
+            header['CTYPE1'] = 'RA---TAN'
+            header['CTYPE2'] = 'DEC--TAN'
+            header['CUNIT1'] = 'deg'
+            header['CUNIT2'] = 'deg'
+            header['CRVAL1'] = ra
+            header['CRVAL2'] = dec
+            header['CRPIX1'] = self.get_position_axis_function_naxis1(0)
+            header['CRPIX2'] = self.get_position_axis_function_naxis2(0)
 
-        # DB 24-09-19
-        # if wavelength IS None, wl = 0.6 microns, and resolving_power is
-        # always determined.
-        resolving_power = None
-        wavelength = headers[0].get('WAVELENG', 6000)
-        wl = wavelength / 1e4  # everything in microns
-        resolving_power = wl / (max_wl - min_wl)
-        energy = SpectralWCS(
-            axis=axis,
-            specsys='TOPOCENT',
-            ssyssrc='TOPOCENT',
-            ssysobs='TOPOCENT',
-            bandpass_name=filter_name,
-            resolving_power=resolving_power,
-        )
-        chunk.energy = energy
+            wcs_parser = FitsWcsParser(header, obs_id, 0)
+            if chunk is None:
+                chunk = Chunk()
+            wcs_parser.augment_position(chunk)
 
+            x_binning = header.get('XBINNING')
+            if x_binning is None:
+                x_binning = 1.0
+            cdelt1 = 3.0 * x_binning / 3600.0
+            y_binning = header.get('YBINNING')
+            if y_binning is None:
+                y_binning = 1.0
+            cdelt2 = 3.0 * y_binning / 3600.0
 
-def _build_chunk_position(chunk, headers, obs_id):
-    # DB 18-08-19
-    # Ignoring rotation for now:  Use CRVAL1 = RA from header, CRVAL2 = DEC
-    # from header.  NAXIS1/NAXIS2 values gives number of pixels along RA/DEC
-    # axes (again, ignoring rotation) and assume CRPIX1 = NAXIS1/2.0 and
-    # CRPIX2 = NAXIS2/2.0 (i.e. in centre of image).   XBINNING/YBINNING
-    # give binning values along RA/DEC axes.   CDELT1 (scale in
-    # degrees/pixel; it’s 3 arcsec/unbinned pixel)= 3.0*XBINNING/3600.0
-    # CDELT2 = 3.0*YBINNING/3600.0.  Set CROTA2=0.0
-    header = headers[0]
-    ra = get_ra(header)
-    dec = get_dec(header)
-    if ra is None or dec is None:
-        logging.warning(f'No position information for {obs_id}')
-        chunk.naxis = None
-    else:
-        header['CTYPE1'] = 'RA---TAN'
-        header['CTYPE2'] = 'DEC--TAN'
-        header['CUNIT1'] = 'deg'
-        header['CUNIT2'] = 'deg'
-        header['CRVAL1'] = ra
-        header['CRVAL2'] = dec
-        header['CRPIX1'] = get_position_axis_function_naxis1(header)
-        header['CRPIX2'] = get_position_axis_function_naxis2(header)
+            objct_rol = header.get('OBJCTROL')
+            if objct_rol is None:
+                objct_rol = 0.0
 
-        wcs_parser = WcsParser(header, obs_id, 0)
-        if chunk is None:
-            chunk = Chunk()
-        wcs_parser.augment_position(chunk)
+            crota2 = 90.0 - objct_rol
+            crota2_rad = math.radians(crota2)
+            cd11 = cdelt1 * math.cos(crota2_rad)
+            cd12 = abs(cdelt2) * NEOSSatMapping._sign(cdelt1) * math.sin(crota2_rad)
+            cd21 = -abs(cdelt1) * NEOSSatMapping._sign(cdelt2) * math.sin(crota2_rad)
+            cd22 = cdelt2 * math.cos(crota2_rad)
 
-        x_binning = header.get('XBINNING')
-        if x_binning is None:
-            x_binning = 1.0
-        cdelt1 = 3.0 * x_binning / 3600.0
-        y_binning = header.get('YBINNING')
-        if y_binning is None:
-            y_binning = 1.0
-        cdelt2 = 3.0 * y_binning / 3600.0
+            dimension = Dimension2D(header.get('NAXIS1'), header.get('NAXIS2'))
+            x = RefCoord(self.get_position_axis_function_naxis1(0), self.get_ra(0))
+            y = RefCoord(self.get_position_axis_function_naxis2(0), self.get_dec(0))
+            ref_coord = Coord2D(x, y)
+            function = CoordFunction2D(dimension, ref_coord, cd11, cd12, cd21, cd22)
+            chunk.position.axis.function = function
+            chunk.position_axis_1 = 1
+            chunk.position_axis_2 = 2
 
-        objct_rol = header.get('OBJCTROL')
-        if objct_rol is None:
-            objct_rol = 0.0
-
-        crota2 = 90.0 - objct_rol
-        crota2_rad = math.radians(crota2)
-        cd11 = cdelt1 * math.cos(crota2_rad)
-        cd12 = abs(cdelt2) * _sign(cdelt1) * math.sin(crota2_rad)
-        cd21 = -abs(cdelt1) * _sign(cdelt2) * math.sin(crota2_rad)
-        cd22 = cdelt2 * math.cos(crota2_rad)
-
-        dimension = Dimension2D(header.get('NAXIS1'), header.get('NAXIS2'))
-        x = RefCoord(get_position_axis_function_naxis1(header), get_ra(header))
-        y = RefCoord(
-            get_position_axis_function_naxis2(header), get_dec(header)
-        )
-        ref_coord = Coord2D(x, y)
-        function = CoordFunction2D(
-            dimension, ref_coord, cd11, cd12, cd21, cd22
-        )
-        chunk.position.axis.function = function
-        chunk.position_axis_1 = 1
-        chunk.position_axis_2 = 2
-
-
-def _sign(value):
-    return -1.0 if value < 0.0 else 1.0
-
-
-def _build_blueprints(uris):
-    """This application relies on the caom2utils fits2caom2 ObsBlueprint
-    definition for mapping FITS file values to CAOM model element
-    attributes. This method builds the DRAO-ST blueprint for a single
-    artifact.
-
-    The blueprint handles the mapping of values with cardinality of 1:1
-    between the blueprint entries and the model attributes.
-
-    :param uri The artifact URI for the file to be processed."""
-    module = importlib.import_module(__name__)
-    blueprints = {}
-    for uri in uris:
-        blueprint = ObsBlueprint(module=module)
-        if not mc.StorageName.is_preview(uri):
-            accumulate_bp(blueprint, uri)
-        blueprints[uri] = blueprint
-    return blueprints
-
-
-def _get_uris(args):
-    result = []
-    if args.local:
-        for ii in args.local:
-            file_id = NEOSSatName.remove_extensions(os.path.basename(ii))
-            file_name = '{}.fits'.format(file_id)
-            result.append(NEOSSatName(file_name, file_name).file_uri)
-    elif args.lineage:
-        for ii in args.lineage:
-            result.append(ii.split('/', 1)[1])
-    else:
-        raise mc.CadcException(
-            'Could not define uri from these args {}'.format(args)
-        )
-    return result
-
-
-def to_caom2():
-    """This function is called by pipeline execution. It must have this
-    name."""
-    args = get_gen_proc_arg_parser().parse_args()
-    uris = _get_uris(args)
-    blueprints = _build_blueprints(uris)
-    result = gen_proc(args, blueprints)
-    logging.debug(f'Done {APPLICATION} processing with result {result}.')
-    return result
-
-
-def neossat_main_app():
-    args = get_gen_proc_arg_parser().parse_args()
-    try:
-        result = to_caom2()
-        sys.exit(result)
-    except Exception as e:
-        logging.error('Failed {} execution for {}.'.format(APPLICATION, args))
-        tb = traceback.format_exc()
-        logging.debug(tb)
-        sys.exit(-1)
+    @staticmethod
+    def _sign(value):
+        return -1.0 if value < 0.0 else 1.0
