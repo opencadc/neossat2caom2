@@ -300,8 +300,11 @@ class NEOSSatMapping(TelescopeMapping):
         return result
 
     def get_time_delta(self, ext):
+        result = None
         exptime = mc.to_float(self._headers[ext].get('EXPOSURE'))  # in s
-        return exptime / (24.0 * 3600.0)
+        if exptime is not None:
+            result = exptime / (24.0 * 3600.0)
+        return result
 
     def get_time_function_val(self, ext):
         time_string = self._headers[ext].get('DATE-OBS')
