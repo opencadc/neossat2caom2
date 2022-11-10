@@ -74,6 +74,8 @@ import shutil
 from mock import patch, Mock
 
 from caom2pipe import manage_composable as mc
+
+import neossat2caom2.tests.test_data_source
 from neossat2caom2 import scrape
 import test_main_app
 
@@ -131,14 +133,14 @@ def test_list_for_validate(ftp_mock):
     # put some test appending files in place - these files indicate
     # a 'No Exceptions' ending to list_for_validate occurred last
     # time
-    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_CACHE)
+    cache_fqn = os.path.join(neossat2caom2.tests.test_data_source.TEST_DATA_DIR, scrape.NEOSSAT_CACHE)
     if os.path.exists(cache_fqn):
         os.unlink(cache_fqn)
     source_list_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST
+        neossat2caom2.tests.test_data_source.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST
     )
     source_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, 'test_source_listing.yml'
+        neossat2caom2.tests.test_data_source.TEST_DATA_DIR, 'test_source_listing.yml'
     )
     shutil.copy(source_fqn, source_list_fqn)
     _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 8, 2)
@@ -150,13 +152,13 @@ def test_list_for_validate_exceptional_ending(ftp_mock):
     # an FTPOSError ending to list_for_validate occurred last
     # time
     source_list_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST
+        neossat2caom2.tests.test_data_source.TEST_DATA_DIR, scrape.NEOSSAT_SOURCE_LIST
     )
     if os.path.exists(source_list_fqn):
         os.unlink(source_list_fqn)
-    cache_fqn = os.path.join(test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_CACHE)
+    cache_fqn = os.path.join(neossat2caom2.tests.test_data_source.TEST_DATA_DIR, scrape.NEOSSAT_CACHE)
     source_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, 'test_cache_listing.csv'
+        neossat2caom2.tests.test_data_source.TEST_DATA_DIR, 'test_cache_listing.csv'
     )
     shutil.copy(source_fqn, cache_fqn)
     _execute_and_check_list_for_validate(ftp_mock, source_list_fqn, 17, 14)
@@ -172,10 +174,10 @@ def _execute_and_check_list_for_validate(
     ftp_mock, source_list_fqn, result_count, cache_count
 ):
     source_dir_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, scrape.NEOSSAT_DIR_LIST
+        neossat2caom2.tests.test_data_source.TEST_DATA_DIR, scrape.NEOSSAT_DIR_LIST
     )
     source_fqn = os.path.join(
-        test_main_app.TEST_DATA_DIR, 'test_source_dir_listing.csv'
+        neossat2caom2.tests.test_data_source.TEST_DATA_DIR, 'test_source_dir_listing.csv'
     )
     shutil.copy(source_fqn, source_dir_fqn)
 
@@ -186,7 +188,7 @@ def _execute_and_check_list_for_validate(
         _entry_stats
     )
     getcwd_orig = os.getcwd
-    os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
+    os.getcwd = Mock(return_value=neossat2caom2.tests.test_data_source.TEST_DATA_DIR)
     try:
         test_config = mc.Config()
         test_config.get_executors()

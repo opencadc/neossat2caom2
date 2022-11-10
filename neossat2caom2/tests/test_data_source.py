@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2021.                            (c) 2021.
+#  (c) 2022.                            (c) 2022.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -67,59 +67,65 @@
 # ***********************************************************************
 #
 
-import os
-import shutil
+from datetime import datetime, timezone
+from os.path import dirname, join, realpath
 
-from caom2pipe import manage_composable as mc
-from caom2pipe import name_builder_composable as nbc
+from caom2pipe.manage_composable import Config, make_time_tz
+from neossat2caom2.data_source import CSADataSource
 
-import neossat2caom2.tests.test_data_source
-from neossat2caom2 import preview_augmentation, NEOSSatName
-import test_main_app
+THIS_DIR = dirname(realpath(__file__))
+TEST_DATA_DIR = join(THIS_DIR, 'data')
+
+TOP_PAGE = f'{TEST_DATA_DIR}/top_page.html'
+YEAR_PAGE = f'{TEST_DATA_DIR}/year_page.html'
+DAY_PAGE = f'{TEST_DATA_DIR}/day_page.html'
+TEST_START_TIME_STR = '2022-02-01T13:57:00'
+
+test_time_zone = timezone.utc
 
 
-def test_preview_augmentation():
-    test_obs_fqn = f'{neossat2caom2.tests.test_data_source.TEST_DATA_DIR}/2019213215700.expected.xml'
-    test_obs = mc.read_obs_from_file(test_obs_fqn)
-    assert test_obs is not None, 'expect an input'
-    assert len(test_obs.planes) == 3, 'expect 3 planes'
-    for product_id in ['raw', 'cor', 'cord']:
-        assert (
-            len(test_obs.planes[product_id].artifacts) == 1
-        ), 'wrong artifact pre-condition count'
+def test_parse_functions():
+    # test _parse_* functions in the DataSource specializations
+    test_config = Config()
+    test_config.data_source = ['https://data.asc-csa.gc.ca/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/']
+    test_config.data_source_extensions = ['.fits', '.fits.gz']
+    test_config.state_file_name = 'parse_test_state.yml'
+    test_config.state_fqn = join(TEST_DATA_DIR, 'parse_test_state.yml')
+    test_subject = CSADataSource(test_config)
+    assert test_subject is not None, 'ctor failure'
+    test_subject._start_time = make_time_tz(TEST_START_TIME_STR)
 
-    test_file_names = [
-        'NEOS_SCI_2019213215700_cor.fits',
-        'NEOS_SCI_2019213215700.fits',
-        'NEOS_SCI_2019213215700_cord.fits',
-    ]
+    with open(TOP_PAGE) as f:
+        test_content = f.read()
+        test_result = test_subject._parse_top_page(test_content)
+        assert test_result is not None, 'expected a result'
+        assert len(test_result) == 2, 'wrong number of results'
+        first_answer = next(iter(sorted(test_result.items())))
+        assert len(first_answer) == 2, 'wrong number of results'
+        assert first_answer[0] == '2021'
+        assert first_answer[1] == datetime(2022, 3, 1, 3, 19, tzinfo=test_time_zone)
 
-    test_builder = nbc.GuessingBuilder(NEOSSatName)
-    for f_name in test_file_names:
-        test_fqn = f'/test_files/{f_name}'
-        if not os.path.exists(test_fqn):
-            shutil.copy(f'{neossat2caom2.tests.test_data_source.TEST_DATA_DIR}/{f_name}', test_fqn)
-        test_storage_name = test_builder.build(test_fqn)
-        if os.path.exists(f'/test_files/{test_storage_name.prev}'):
-            os.unlink(f'/test_files/{test_storage_name.prev}')
-        if os.path.exists(f'/test_files/{test_storage_name.thumb}'):
-            os.unlink(f'/test_files/{test_storage_name.thumb}')
-
-        kwargs = {
-            'working_directory': '/test_files',
-            'storage_name': test_storage_name,
-        }
-        test_result = preview_augmentation.visit(test_obs, **kwargs)
+    with open(YEAR_PAGE) as f:
+        test_content = f.read()
+        test_result = test_subject._parse_year_page(test_content)
         assert test_result is not None, 'expect a result'
+        import logging
+        logging.error(test_result)
+        assert len(test_result) == 1, 'wrong number of results'
+        temp = test_result.popitem()
         assert (
-               test_result.get('artifacts') is not None
-        ), 'expect artifact count'
-        assert test_result.get('artifacts') == 2, 'wrong artifact count'
-        assert os.path.exists(f'/test_files/{test_storage_name.prev}')
-        assert os.path.exists(f'/test_files/{test_storage_name.thumb}')
+            temp[1][0] == 'https://localhost:8080/VLASS1.2/QA_REJECTED/VLASS1.2.ql.T21t15.J141833+413000.10.2048.v1/'
+        )
+        # TODO - what did I get rid of?
+        # assert test_max is not None, 'expected max result'
+        # assert test_max == datetime(2019, 5, 1, 4, 30, tzinfo=test_time_zone), 'wrong date result'
 
-    for product_id in ['raw', 'cor', 'cord']:
-        assert (
-                len(test_obs.planes[product_id].artifacts) == 3
-        ), 'wrong artifact post-condition count'
-
+    with open(DAY_PAGE) as f:
+        test_content = f.read()
+        test_result = test_subject._parse_day_page(test_content)
+        assert test_result is not None, 'expected a result'
+        assert len(test_result) == 4, 'wrong number of results'
+        first_answer = next(iter(test_result.items()))
+        assert len(first_answer) == 2, 'wrong number of results'
+        assert first_answer[0] == 'T07t13/', 'wrong content'
+        assert first_answer[1] == datetime(2019, 4, 29, 2, 2, tzinfo=test_time_zone)

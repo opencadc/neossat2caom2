@@ -67,17 +67,20 @@
 # ***********************************************************************
 #
 
-import logging
-from caom2pipe import data_source_composable as dsc
+from collections import deque
+from bs4 import BeautifulSoup
 
-__all__ = ['IncrementalSource']
+from caom2pipe import data_source_composable as dsc
+from caom2pipe.manage_composable import get_endpoint_session, make_time_tz
+
+
+__all__ = ['CSADataSource', 'IncrementalSource']
 
 
 class IncrementalSource(dsc.DataSource):
     def __init__(self, todo_list):
         super(IncrementalSource, self).__init__()
         self._todo_list = todo_list
-        self._logger = logging.getLogger(__name__)
 
     def get_time_box_work(self, prev_exec_time, exec_time):
         """
@@ -97,3 +100,60 @@ class IncrementalSource(dsc.DataSource):
             if prev_exec_time < timestamp <= exec_time:
                 temp.append(dsc.StateRunnerMeta(entry, timestamp))
         return temp
+
+
+class CSADataSource(dsc.DataSource):
+    def __init(self, config, start_time):
+        super().__init__(config)
+        self._data_sources = config.data_sources
+        self._data_source_extensions = config.data_source_extensions
+        self._session = get_endpoint_session()
+        self._start_time = start_time
+
+    def get_time_box_work(self, prev_exec_time, exec_time):
+        return deque()
+
+    def get_work(self):
+        return deque()
+
+    def _parse_top_page(self, html_string):
+        """
+        :return: dict, keys are timestamps, values are URLs
+        """
+        result = {}
+        soup = BeautifulSoup(html_string, features='lxml')
+        hrefs = soup.find_all('a')
+        for href in hrefs:
+            y = href.get('href').replace('/', '')
+            try:
+                int_y = int(y)
+            except ValueError as e:
+                continue
+            if y == 'NESS' or int(y) >= 2017:
+                dt_str = href.next_element.next_element.string.replace('-', '').strip()
+                dt = make_time_tz(dt_str)
+                if dt >= self._start_time:
+                    self._logger.debug(f'Adding Top Level: {y}')
+                    result[y] = dt
+        return result
+
+    def _parse_year_page(self, html_string):
+        """
+        :return: dict, keys are timestamps, values are URLs
+        """
+        result = {}
+        soup = BeautifulSoup(html_string, features='lxml')
+        hrefs = soup.find_all('a')
+        for href in hrefs:
+            d = href.get('href').replace('/', '')
+            try:
+                int_d = int(d)
+            except ValueError as e:
+                continue
+            if 1 <= int_d <= 366:
+                dt_str = href.next_element.next_element.string.replace('-', '').strip()
+                dt = make_time_tz(dt_str)
+                if dt >= self._start_time:
+                    self._logger.debug(f'Adding Day: {d}')
+                    result[d] = dt
+        return result

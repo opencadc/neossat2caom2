@@ -70,6 +70,8 @@
 import os
 
 from caom2pipe import manage_composable as mc
+
+import neossat2caom2.tests.test_data_source
 from neossat2caom2 import validator, scrape
 
 from mock import patch, Mock
@@ -119,7 +121,7 @@ def test_validator(ftp_mock, caps_mock, post_mock):
             f.write('proxy content')
 
     getcwd_orig = os.getcwd
-    os.getcwd = Mock(return_value=test_main_app.TEST_DATA_DIR)
+    os.getcwd = Mock(return_value=neossat2caom2.tests.test_data_source.TEST_DATA_DIR)
     try:
         test_subject = validator.NeossatValidator()
         test_listing_fqn = (

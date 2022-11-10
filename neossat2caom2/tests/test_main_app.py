@@ -69,7 +69,6 @@
 
 from mock import patch
 
-from cadcdata import FileInfo
 from neossat2caom2 import NEOSSatName, fits2caom2_augmentation
 
 from caom2.diff import get_differences
@@ -80,10 +79,7 @@ from caom2pipe import reader_composable as rdc
 import glob
 import os
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
-PLUGIN = os.path.join(os.path.dirname(THIS_DIR), 'main_app.py')
-
+from neossat2caom2.tests.test_data_source import TEST_DATA_DIR
 
 LOOKUP = {
     '2019213173800': [
