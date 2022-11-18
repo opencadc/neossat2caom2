@@ -78,11 +78,10 @@ from caom2pipe.caom_composable import TelescopeMapping
 from caom2pipe import manage_composable as mc
 
 
-__all__ = ['APPLICATION', 'COLLECTION', 'NEOSSatMapping', 'NEOSSatName']
+__all__ = ['APPLICATION', 'NEOSSatMapping', 'NEOSSatName']
 
 
 APPLICATION = 'neossat2caom2'
-COLLECTION = 'NEOSSAT'
 
 
 class NEOSSatName(mc.StorageName):
