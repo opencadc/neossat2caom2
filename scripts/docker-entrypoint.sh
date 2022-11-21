@@ -2,7 +2,7 @@
 
 if [[ ! -e ${PWD}/config.yml ]]
 then
-  cp /usr/local/bin/config.yml ${PWD}
+  cp /usr/local/.config/config.yml ${PWD}
 fi
 
 if [[ ! -e ${PWD}/state.yml ]]; then
@@ -21,7 +21,7 @@ context:
     - 2021
 " > ${PWD}/state.yml
   else
-    cp /usr/local/bin/state.yml ${PWD}
+    cp /usr/local/.config/state.yml ${PWD}
   fi
 fi
 
