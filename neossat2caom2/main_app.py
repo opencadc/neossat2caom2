@@ -414,7 +414,6 @@ class NEOSSatMapping(TelescopeMapping):
             if plane.product_id != self._storage_name.product_id:
                 continue
             for artifact in plane.artifacts.values():
-                self._logger.error(f'sn {self._storage_name.file_uri} artifact {artifact.uri}')
                 if self._storage_name.file_uri == artifact.uri:
                     # TODO why isn't this condition a continue??????
                     self._logger.error(file_info)
