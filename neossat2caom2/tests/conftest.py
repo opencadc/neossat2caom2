@@ -67,12 +67,21 @@
 # ***********************************************************************
 #
 
-from caom2pipe.manage_composable import StorageName
-from neossat2caom2.main_app import COLLECTION
-
+from caom2pipe.manage_composable import Config, StorageName
 import pytest
 
+COLLECTION = 'NEOSSAT'
+SCHEME = 'cadc'
+PREVIEW_SCHEME = 'cadc'
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture()
 def test_config():
-    StorageName.collection = COLLECTION
+    config = Config()
+    config.collection = COLLECTION
+    config.preview_scheme = PREVIEW_SCHEME
+    config.scheme = SCHEME
+    StorageName.collection = config.collection
+    StorageName.preview_scheme = config.preview_scheme
+    StorageName.scheme = config.scheme
+    return config

@@ -193,7 +193,6 @@ def test_store(test_config):
     clients_mock.data_client.put.assert_called_with(
         '/tmp/2019268004930',
         'cadc:NEOSSAT/NEOS_SCI_2019268004930_clean.fits',
-        None,
     ), 'wrong put args'
     assert transferrer.get.called, 'expect a transfer call'
     transferrer.get.assert_called_with(

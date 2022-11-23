@@ -67,7 +67,6 @@
 # ***********************************************************************
 #
 
-import logging
 import os
 import re
 
@@ -75,124 +74,76 @@ from astropy.io import fits
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
-from caom2 import Observation, ReleaseType, ProductType
+from caom2 import ReleaseType, ProductType
 from caom2pipe import manage_composable as mc
 
 
-def visit(observation, **kwargs):
-    mc.check_param(observation, Observation)
+class NeossatPreview(mc.PreviewVisitor):
 
-    working_dir = kwargs.get('working_directory', './')
-    cadc_client = kwargs.get('cadc_client')
-    if cadc_client is None:
-        logging.warning(
-            'Visitor needs a cadc_client parameter to store images.'
-        )
-    storage_name = kwargs.get('storage_name')
+    def __init__(self, **kwargs):
+        super().__init__(ReleaseType.META, **kwargs)
 
-    count = 0
-    for plane in observation.planes.values():
-        delete_list = []
-        for artifact in plane.artifacts.values():
-            if artifact.uri == storage_name.file_uri:
-                count += _do_prev(
-                    plane, working_dir, cadc_client, storage_name
-                )
-            if artifact.uri.endswith('.jpg'):
-                delete_list.append(artifact.uri)
+    def generate_plots(self, obs_id):
+        self._logger.debug(f'Begin generate_plots for {obs_id}')
+        image_data = fits.getdata(self._science_fqn, ext=0)
+        image_header = fits.getheader(self._science_fqn, ext=0)
+        count = 0
+        for dpi_factor, fqn in {1024: self._preview_fqn, 256: self._thumb_fqn}.items():
+            count += self._generate_plot(fqn, dpi_factor, image_data, image_header)
 
-        for uri in delete_list:
-            plane.artifacts.pop(uri)
+        self.add_preview(self._storage_name.prev_uri, self._storage_name.prev, ProductType.PREVIEW)
+        self.add_preview(self._storage_name.thumb_uri, self._storage_name.thumb, ProductType.THUMBNAIL)
+        self._logger.debug('End generate_plots')
+        return count
 
-    logging.info(
-        'Completed preview augmentation for {}.'.format(
-            observation.observation_id
-        )
-    )
-    return {'artifacts': count}
+    def _generate_plot(self, fqn, dpi_factor, image_data, image_header):
+        # DB 07-10-19
+        fig = plt.figure()
+        dpi = fig.get_dpi()
+        fig.set_size_inches(dpi_factor / dpi, dpi_factor / dpi)
+        plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
 
-
-def _augment(plane, uri, fqn, product_type):
-    temp = None
-    if uri in plane.artifacts:
-        temp = plane.artifacts[uri]
-    plane.artifacts[uri] = mc.get_artifact_metadata(
-        fqn, product_type, ReleaseType.META, uri, temp
-    )
-
-
-def _do_prev(plane, working_dir, cadc_client, storage_name):
-    science_fqn = storage_name.get_file_fqn(working_dir)
-    base_dir = os.path.dirname(science_fqn)
-    preview_fqn = os.path.join(base_dir, storage_name.prev)
-    thumb_fqn = os.path.join(base_dir, storage_name.thumb)
-
-    image_data = fits.getdata(science_fqn, ext=0)
-    image_header = fits.getheader(science_fqn, ext=0)
-
-    _generate_plot(preview_fqn, 1024, image_data, image_header)
-    _generate_plot(thumb_fqn, 256, image_data, image_header)
-
-    _store_smalls(cadc_client, base_dir, storage_name)
-    _augment(plane, storage_name.prev_uri, preview_fqn, ProductType.PREVIEW)
-    _augment(plane, storage_name.thumb_uri, thumb_fqn, ProductType.THUMBNAIL)
-    return 2
-
-
-def _store_smalls(cadc_client, base_dir, neoss_name):
-    if cadc_client is not None:
-        cadc_client.put(base_dir, neoss_name.prev_uri)
-        cadc_client.put(base_dir, neoss_name.thumb_uri)
-
-
-def _generate_plot(fqn, dpi_factor, image_data, image_header):
-    # DB 07-10-19
-    fig = plt.figure()
-    dpi = fig.get_dpi()
-    fig.set_size_inches(dpi_factor / dpi, dpi_factor / dpi)
-    plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
-
-    # DB 08-10-19
-    naxis1 = image_header.get('NAXIS1')
-    naxis2 = image_header.get('NAXIS2')
-    datasec = image_header.get('DATASEC')
-    if datasec is None:
-        xstart = ystart = 0
-        xend = naxis1
-        yend = naxis2
-    else:
-        dsl = list(
-            map(
-                int,
-                re.split('\\[(-*\\d+):(-*\\d+),(-*\\d+):(-*\\d+)\\]', datasec)[
-                    1:5
-                ],
-            )
-        )
-        if (
-            naxis1 < dsl[0]
-            or dsl[1] > naxis1
-            or naxis2 < dsl[2]
-            or dsl[3] > naxis2
-            or dsl[1] - dsl[0] > naxis1
-            or dsl[3] - dsl[2] > naxis2
-        ):
+        # DB 08-10-19
+        naxis1 = image_header.get('NAXIS1')
+        naxis2 = image_header.get('NAXIS2')
+        datasec = image_header.get('DATASEC')
+        if datasec is None:
             xstart = ystart = 0
             xend = naxis1
             yend = naxis2
         else:
-            xstart = dsl[0] - 1
-            xend = dsl[1]
-            ystart = dsl[2] - 1
-            yend = dsl[3]
+            dsl = list(map(int, re.split('\\[(-*\\d+):(-*\\d+),(-*\\d+):(-*\\d+)\\]', datasec)[1:5]))
+            if (
+                naxis1 < dsl[0]
+                or dsl[1] > naxis1
+                or naxis2 < dsl[2]
+                or dsl[3] > naxis2
+                or dsl[1] - dsl[0] > naxis1
+                or dsl[3] - dsl[2] > naxis2
+            ):
+                xstart = ystart = 0
+                xend = naxis1
+                yend = naxis2
+            else:
+                xstart = dsl[0] - 1
+                xend = dsl[1]
+                ystart = dsl[2] - 1
+                yend = dsl[3]
 
-    plt.imshow(
-        image_data[ystart:yend, xstart:xend],
-        cmap='gray_r',
-        norm=colors.LogNorm(),
-    )
-    plt.axis('off')
-    if os.access(fqn, 0):
-        os.remove(fqn)
-    plt.savefig(fqn, format='png')
-    plt.close()
+        plt.imshow(
+            image_data[ystart:yend, xstart:xend],
+            cmap='gray_r',
+            norm=colors.LogNorm(),
+        )
+        plt.axis('off')
+        if os.access(fqn, 0):
+            os.remove(fqn)
+        plt.savefig(fqn, format='png')
+        plt.close()
+        self.add_to_delete(fqn)
+        return 1
+
+
+def visit(observation, **kwargs):
+    previewer = NeossatPreview(**kwargs)
+    return previewer.visit(observation)

@@ -78,11 +78,10 @@ from caom2pipe.caom_composable import TelescopeMapping
 from caom2pipe import manage_composable as mc
 
 
-__all__ = ['APPLICATION', 'COLLECTION', 'NEOSSatMapping', 'NEOSSatName']
+__all__ = ['APPLICATION', 'NEOSSatMapping', 'NEOSSatName']
 
 
 APPLICATION = 'neossat2caom2'
-COLLECTION = 'NEOSSAT'
 
 
 class NEOSSatName(mc.StorageName):
@@ -415,7 +414,6 @@ class NEOSSatMapping(TelescopeMapping):
             if plane.product_id != self._storage_name.product_id:
                 continue
             for artifact in plane.artifacts.values():
-                self._logger.error(f'sn {self._storage_name.file_uri} artifact {artifact.uri}')
                 if self._storage_name.file_uri == artifact.uri:
                     # TODO why isn't this condition a continue??????
                     self._logger.error(file_info)
