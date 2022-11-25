@@ -68,10 +68,14 @@
 #
 
 from datetime import datetime, timezone
-from os.path import dirname, join, realpath
+from os import chdir, getcwd
+from os.path import basename, dirname, join, realpath
+from tempfile import TemporaryDirectory
 
-from caom2pipe.manage_composable import Config, make_time_tz
+from caom2pipe.manage_composable import Config, ExecutionReporter, make_time_tz, State
+from neossat2caom2.composable import NEOS_BOOKMARK
 from neossat2caom2.data_source import CSADataSource
+from unittest.mock import Mock, patch
 
 THIS_DIR = dirname(realpath(__file__))
 TEST_DATA_DIR = join(THIS_DIR, 'data')
@@ -97,35 +101,89 @@ def test_parse_functions():
 
     with open(TOP_PAGE) as f:
         test_content = f.read()
-        test_result = test_subject._parse_top_page(test_content)
-        assert test_result is not None, 'expected a result'
-        assert len(test_result) == 2, 'wrong number of results'
-        first_answer = next(iter(sorted(test_result.items())))
-        assert len(first_answer) == 2, 'wrong number of results'
-        assert first_answer[0] == '2021'
-        assert first_answer[1] == datetime(2022, 3, 1, 3, 19, tzinfo=test_time_zone)
+        test_result = test_subject._parse_top_page(test_config.data_source[0], test_content)
+        assert test_result is not None, 'expected a top page result'
+        assert len(test_result) == 2, 'wrong number of top page results'
+        top_first_answer = next(iter(sorted(test_result.items())))
+        assert len(top_first_answer) == 2, 'wrong number of top page results'
+        assert top_first_answer[0] == datetime(2022, 3, 1, 3, 19, tzinfo=test_time_zone)
+        assert top_first_answer[1][0] == f'{test_config.data_source[0]}2021'
 
     with open(YEAR_PAGE) as f:
         test_content = f.read()
-        test_result = test_subject._parse_year_page(test_content)
+        test_result = test_subject._parse_year_page(top_first_answer[1][0], test_content)
         assert test_result is not None, 'expect a result'
-        import logging
-        logging.error(test_result)
-        assert len(test_result) == 1, 'wrong number of results'
-        temp = test_result.popitem()
-        assert (
-            temp[1][0] == 'https://localhost:8080/VLASS1.2/QA_REJECTED/VLASS1.2.ql.T21t15.J141833+413000.10.2048.v1/'
-        )
-        # TODO - what did I get rid of?
-        # assert test_max is not None, 'expected max result'
-        # assert test_max == datetime(2019, 5, 1, 4, 30, tzinfo=test_time_zone), 'wrong date result'
+        assert len(test_result) == 4, 'wrong number of year page results'
+        year_first_answer = next(iter(sorted(test_result.items())))
+        assert year_first_answer[0] == datetime(2022, 3, 1, 13, 58, tzinfo=test_time_zone), 'wrong year page timestamp'
+        assert year_first_answer[1][0] == f'{test_config.data_source[0]}2021/001', 'wrong year page url'
 
     with open(DAY_PAGE) as f:
         test_content = f.read()
-        test_result = test_subject._parse_day_page(test_content)
-        assert test_result is not None, 'expected a result'
-        assert len(test_result) == 4, 'wrong number of results'
-        first_answer = next(iter(test_result.items()))
-        assert len(first_answer) == 2, 'wrong number of results'
-        assert first_answer[0] == 'T07t13/', 'wrong content'
-        assert first_answer[1] == datetime(2019, 4, 29, 2, 2, tzinfo=test_time_zone)
+        test_result = test_subject._parse_day_page(year_first_answer[1][0], test_content)
+        assert test_result is not None, 'expected a day page result'
+        assert len(test_result) == 3, 'wrong number of day page results'
+        first_answer = next(iter(sorted(test_result.items())))
+        assert len(first_answer) == 2, 'wrong number of day page results'
+        assert first_answer[0] == datetime(2022, 3, 1, 13, 56, tzinfo=test_time_zone)
+        assert first_answer[1][0] == f'{test_config.data_source[0]}2021/001/NEOS_SCI_2022001030508.fits', 'wrong content'
+
+
+@patch('neossat2caom2.data_source.query_endpoint_session')
+def test_incremental_source(query_endpoint_mock, test_config):
+    query_endpoint_mock.side_effect = _query_endpoint
+    orig_cwd = getcwd()
+    try:
+        with TemporaryDirectory() as tmp_dir_name:
+            chdir(tmp_dir_name)
+
+            test_config.change_working_directory(tmp_dir_name)
+            test_config.write_to_file(test_config)
+            State.write_bookmark(test_config.state_fqn, NEOS_BOOKMARK, TEST_START_TIME_STR)
+
+            test_start_time = make_time_tz(TEST_START_TIME_STR)
+            test_subject = CSADataSource(test_config, test_start_time)
+            assert test_subject is not None, 'ctor failure'
+            test_reporter = ExecutionReporter(test_config, observable=Mock(), application='DEFAULT')
+            test_subject.reporter = test_reporter
+            test_result = test_subject.get_time_box_work(
+                test_start_time.timestamp(), datetime.fromtimestamp(1656143080).timestamp()
+            )
+            assert test_result is not None, 'expected dict result'
+            assert len(test_result) == 108, 'wrong size results'
+            temp = sorted([ii.entry_name for ii in test_result])
+            assert (
+                temp[0]
+                == 'https://localhost:8888/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2021/001/'
+                   'NEOS_SCI_2022001030508.fits'
+            ), 'wrong result'
+            assert test_subject.max_time is not None, 'expected date result'
+            assert test_subject.max_time == 1661182200.0, 'wrong date result'
+            assert test_reporter._summary._entries_sum == 108, f'wrong entries {test_reporter._summary.report()}'
+    finally:
+        chdir(orig_cwd)
+
+
+def _query_endpoint(url, session):
+
+    def _close():
+        pass
+
+    result = type('response', (), {})
+    result.text = None
+    result.close = _close
+
+    base_name = basename(url)
+
+    if url == 'https://localhost:8888/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/':
+        with open(TOP_PAGE, 'r') as f:
+            result.text = f.read()
+    elif base_name in ['2021', '2022']:
+        with open(YEAR_PAGE) as f:
+            result.text = f.read()
+    elif base_name in ['001', '002', '310', '311', '312', '313']:
+        with open(DAY_PAGE) as f:
+            result.text = f.read()
+    else:
+        raise Exception(f'wut? {url}')
+    return result

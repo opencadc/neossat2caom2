@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2019.                            (c) 2019.
+#  (c) 2022.                            (c) 2022.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,69 +62,84 @@
 #  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
 #                                       <http://www.gnu.org/licenses/>.
 #
-#  $Revision: 4 $
+#  : 4 $
 #
 # ***********************************************************************
 #
 
-import os
-
-from caom2pipe import manage_composable as mc
-
-from neossat2caom2 import validator
-
-from mock import patch, Mock
+from caom2pipe.manage_composable import StorageName
 
 
-@patch('neossat2caom2.data_source.CSADataSource.get_work')
-@patch('cadcdata.core.net.BaseWsClient.post')
-@patch('cadcutils.net.ws.WsCapabilities.get_access_url')
-def test_validator(caps_mock, post_mock, get_work_mock, test_config, tmpdir):
-    caps_mock.return_value = 'https://localhost:8888'
-    response = Mock()
-    response.status_code = 200
-    y = [
-        b'uri\n'
-        b'cadc:NEOSSAT/NEOS_SCI_2019213215700_cord.fits\n'
-        b'cadc:NEOSSAT/NEOS_SCI_2019213215700_cor.fits\n'
-        b'cadc:NEOSSAT/NEOS_SCI_2019213215700.fits\n'
-    ]
+class NEOSSatName(StorageName):
+    """Naming rules:
+    - support mixed-case file name storage, and mixed-case obs id values
+    - support uncompressed files in storage
+    """
 
-    x = [b'uri,contentLastModified\n']
+    def __init__(self, file_name, source_names):
+        super().__init__(file_name=file_name, source_names=source_names)
+        self._logger.debug(self)
 
-    global count
-    count = 0
+    def __str__(self):
+        return f'\n' \
+               f'      obs id: {self._obs_id}\n' \
+               f'   file name: {self._file_name}\n' \
+               f'source names: {self.source_names}\n'
 
-    def _mock_shit(chunk_size):
-        global count
-        if count == 0:
-            count = 1
-            return y
-        else:
-            return x
+    def is_valid(self):
+        return True
+    @property
+    def prev(self):
+        """The preview file name for the file."""
+        return '{}_{}_prev.png'.format(self.obs_id, self._product_id)
 
-    response.iter_content.side_effect = _mock_shit
-    post_mock.return_value.__enter__.return_value = response
+    @property
+    def thumb(self):
+        """The thumbnail file name for the file."""
+        return '{}_{}_prev_256.png'.format(self.obs_id, self._product_id)
 
-    get_work_mock.return_value = {}
-    test_config.change_working_directory(tmpdir)
-    test_config.proxy_file_name = 'test_proxy.pem'
-    test_config.logging_level = 'INFO'
-    mc.Config.write_to_file(test_config)
-    with open(test_config.proxy_fqn, 'w') as f:
-        f.write('proxy content')
+    @staticmethod
+    def remove_extensions(value):
+        return (
+            value.replace('.fits', '')
+            .replace('.header', '')
+            .replace('.gz', '')
+        )
 
-    test_subject = validator.NeossatValidator()
-    test_listing_fqn = f'{test_config.working_directory}/{mc.VALIDATE_OUTPUT}'
-    test_source, test_meta, test_data = test_subject.validate()
-    assert test_source is not None, 'expected source result'
-    assert test_meta is not None, 'expected destination result'
-    assert len(test_source) == 0, 'wrong number of source results'
-    assert len(test_meta) == 3, 'wrong # of destination results'
-    assert (
-        'NEOS_SCI_2019213215700_cor.fits' in test_meta
-    ), 'wrong destination content'
-    assert len(test_data) == 0, 'wrong number of data results'
-    assert os.path.exists(test_listing_fqn), 'should create file record'
-    test_subject.write_todo()
-    assert not os.path.exists(test_subject._config.work_fqn), 'no records, should not create file record'
+    def set_file_id(self):
+        self._file_id = NEOSSatName.remove_extensions(self._file_name)
+
+    def set_obs_id(self):
+        self._obs_id = NEOSSatName.extract_obs_id(self._file_id)
+
+    def set_product_id(self):
+        self._product_id = NEOSSatName.extract_product_id(self._file_id)
+
+    @staticmethod
+    def extract_obs_id(value):
+        return (
+            value.replace('_clean', '')
+            .replace('NEOS_SCI_', '')
+            .replace('_cord', '')
+            .replace('_cor', '')
+        )
+
+    @staticmethod
+    def extract_product_id(value):
+        # DB 18-09-19
+        # I think JJ suggested that product ID should be ‘cor’,  ‘cord’,
+        # and so maybe ‘clean’.  i.e. depends on the trailing characters
+        # after final underscore in the file name.  Perhaps ‘raw’ for files
+        # without any such characters.
+        result = 'raw'
+        if '_cord' in value:
+            result = 'cord'
+        elif '_cor' in value:
+            result = 'cor'
+        elif '_clean' in value:
+            result = 'clean'
+        return result
+
+    @staticmethod
+    def is_preview(entry):
+        return '.png' in entry

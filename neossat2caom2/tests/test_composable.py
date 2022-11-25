@@ -69,15 +69,18 @@
 
 import os
 
+from collections import defaultdict
 from datetime import datetime, timedelta
-from mock import patch, Mock, ANY
+from mock import patch, Mock, PropertyMock
+from tempfile import TemporaryDirectory
 
 from caom2 import SimpleObservation
 from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
-from neossat2caom2 import composable, APPLICATION, NEOSSatName, NEOS_BOOKMARK
-from neossat2caom2 import scrape
+from neossat2caom2 import composable
+from neossat2caom2.main_app import APPLICATION
+from neossat2caom2.storage_name import NEOSSatName
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
@@ -111,38 +114,60 @@ TEST_FILE_LIST = [
     'NEOS_SCI_2019268010210.fits',
 ]
 
+x = defaultdict(list)
+for f_name in TEST_FILE_LIST[:8]:
+    x[TEST_TIMESTAMP_1].append(f_name)
+for f_name in TEST_FILE_LIST[8:]:
+    x[TEST_TIMESTAMP_2].append(f_name)
 
+
+@patch('neossat2caom2.data_source.CSADataSource.todo_list', new_callable=PropertyMock(return_value=x))
+@patch('neossat2caom2.data_source.CSADataSource.max_time', new_callable=PropertyMock(return_value=TEST_TIMESTAMP_2))
+@patch('neossat2caom2.data_source.CSADataSource.initialize_todo')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
-@patch('neossat2caom2.scrape._append_todo')
-def test_run_state(query_mock, run_mock, access_mock, test_config):
+def test_run_state(run_mock, access_mock, initialize_mock, max_mock, list_mock, test_config):
     access_mock.return_value = 'https://localhost'
-    _write_state(TEST_START_TIME)
-    query_mock.side_effect = _append_todo_mock
-    run_mock.return_value = 0
-    getcwd_orig = os.getcwd
-    os.getcwd = Mock(return_value=TEST_DATA_DIR)
+
+    orig_cwd = os.getcwd()
     try:
-        test_result = composable._run_state()
-        assert test_result == 0, 'expected successful test result'
-        assert run_mock.called, 'should be called'
-        args, kwargs = run_mock.call_args
-        test_storage = args[0]
-        assert isinstance(test_storage, NEOSSatName), type(test_storage)
-        assert test_storage.file_name.startswith(
-            'NEOS_SCI'
-        ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
-        assert run_mock.call_count == 10, 'wrong call count'
-    except Exception as e:
-        assert False, f'unexpected exception {e}'
+        with TemporaryDirectory() as tmp_dir_name:
+            os.chdir(tmp_dir_name)
+            test_config.change_working_directory(tmp_dir_name)
+            test_config.task_types = [mc.TaskType.STORE, mc.TaskType.INGEST]
+            test_config.proxy_file_name = 'textproxy.pem'
+            test_config.interval = 200
+            test_config.write_to_file(test_config)
+
+            mc.State.write_bookmark(test_config.state_fqn, composable.NEOS_BOOKMARK, TEST_START_TIME)
+            with open(test_config.proxy_fqn, 'w') as f:
+                f.write('test content')
+
+            run_mock.return_value = 0
+            try:
+                test_result = composable._run_state()
+            except Exception as e:
+                import traceback
+                import logging
+                logging.error(traceback.format_exc())
+                assert False, f'unexpected exception {e}'
+            assert test_result == 0, 'expected successful test result'
+            assert initialize_mock.called, 'initialize should be called'
+            # called for every invocation of get_time_box_work
+            assert initialize_mock.call_count == 12, 'wrong initialize call count'
+            assert run_mock.called, 'should be called'
+            args, kwargs = run_mock.call_args
+            test_storage = args[0]
+            assert isinstance(test_storage, NEOSSatName), type(test_storage)
+            assert test_storage.file_name.startswith(
+                'NEOS_SCI'
+            ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
+            assert run_mock.call_count == 10, 'wrong call count'
     finally:
-        os.getcwd = getcwd_orig
+        os.chdir(orig_cwd)
 
 
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
-# # @patch('caom2pipe.client_composable.CAOM2RepoClient')
-# # @patch('caom2utils.data_util.StorageClientWrapper')
-# def test_run_by_file(data_client_mock, repo_mock, access_mock):
 @patch('caom2pipe.client_composable.ClientCollection')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
 def test_run_by_file(do_one_mock, clients_mock, access_mock):
@@ -158,13 +183,14 @@ def test_run_by_file(do_one_mock, clients_mock, access_mock):
     os.getcwd = Mock(return_value=TEST_DATA_DIR)
     try:
         _write_todo()
-        test_result = composable._run()
+        try:
+            test_result = composable._run()
+        except Exception as e:
+            assert False, f'unexpected exception {e}'
         assert test_result == 0, 'wrong result'
         # ClientVisit executor only with the test configuration
         assert do_one_mock.called, 'expect do_one call'
         assert do_one_mock.call_count == 10, 'wrong number of mock calls'
-    except Exception as e:
-        assert False, f'unexpected exception {e}'
     finally:
         os.getcwd = getcwd_orig
 
@@ -179,8 +205,6 @@ def test_store(test_config):
     )
     test_builder = nbc.GuessingBuilder(NEOSSatName)
     test_storage_name = test_builder.build(test_fqn)
-    import logging
-    logging.error(test_storage_name)
     transferrer = Mock()
     clients_mock = Mock()
     metadata_reader_mock = Mock()
@@ -200,15 +224,6 @@ def test_store(test_config):
     ), 'wrong get args'
 
 
-def _append_todo_mock(ignore1, ignore2, ignore3, ignore4, ignore5, ignore6):
-    temp = {}
-    for f_name in TEST_FILE_LIST[:8]:
-        temp[f_name] = [False, TEST_TIMESTAMP_1]
-    for f_name in TEST_FILE_LIST[8:]:
-        temp[f_name] = [False, TEST_TIMESTAMP_2]
-    return temp
-
-
 def _check_execution(run_mock):
     assert run_mock.called, 'should have been called'
     args, kwargs = run_mock.call_args
@@ -219,15 +234,6 @@ def _check_execution(run_mock):
         'NEOS_SCI'
     ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
     assert run_mock.call_count == 10, 'wrong call count'
-
-
-def _write_state(start_time_str):
-    test_time = datetime.strptime(start_time_str, mc.ISO_8601_FORMAT)
-    test_bookmark = {
-        'bookmarks': {NEOS_BOOKMARK: {'last_record': test_time}},
-        'context': {scrape.NEOS_CONTEXT: ['NEOSS', '2017', '2018', '2019']},
-    }
-    mc.write_as_yaml(test_bookmark, STATE_FILE)
 
 
 def _write_todo():
