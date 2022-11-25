@@ -188,7 +188,7 @@ def test_run_by_file(do_one_mock, clients_mock, access_mock):
         os.getcwd = getcwd_orig
 
 
-def test_store(test_config):
+def test_store():
     tc = mc.Config()
     tc.logging_level = 'DEBUG'
     tc.working_directory = '/tmp'
