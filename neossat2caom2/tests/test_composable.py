@@ -72,7 +72,6 @@ import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 from mock import patch, Mock, PropertyMock
-from tempfile import TemporaryDirectory
 
 from caom2 import SimpleObservation
 from caom2pipe import execute_composable as ec
@@ -126,45 +125,39 @@ for f_name in TEST_FILE_LIST[8:]:
 @patch('neossat2caom2.data_source.CSADataSource.initialize_todo')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
-def test_run_state(run_mock, access_mock, initialize_mock, max_mock, list_mock, test_config):
+def test_run_state(run_mock, access_mock, initialize_mock, max_mock, list_mock, test_config, tmpdir):
     access_mock.return_value = 'https://localhost'
 
-    orig_cwd = os.getcwd()
+    test_config.change_working_directory(tmpdir)
+    test_config.task_types = [mc.TaskType.STORE, mc.TaskType.INGEST]
+    test_config.proxy_file_name = 'textproxy.pem'
+    test_config.interval = 200
+    test_config.write_to_file(test_config)
+
+    mc.State.write_bookmark(test_config.state_fqn, composable.NEOS_BOOKMARK, TEST_START_TIME)
+    with open(test_config.proxy_fqn, 'w') as f:
+        f.write('test content')
+
+    run_mock.return_value = 0
     try:
-        with TemporaryDirectory() as tmp_dir_name:
-            os.chdir(tmp_dir_name)
-            test_config.change_working_directory(tmp_dir_name)
-            test_config.task_types = [mc.TaskType.STORE, mc.TaskType.INGEST]
-            test_config.proxy_file_name = 'textproxy.pem'
-            test_config.interval = 200
-            test_config.write_to_file(test_config)
-
-            mc.State.write_bookmark(test_config.state_fqn, composable.NEOS_BOOKMARK, TEST_START_TIME)
-            with open(test_config.proxy_fqn, 'w') as f:
-                f.write('test content')
-
-            run_mock.return_value = 0
-            try:
-                test_result = composable._run_state()
-            except Exception as e:
-                import traceback
-                import logging
-                logging.error(traceback.format_exc())
-                assert False, f'unexpected exception {e}'
-            assert test_result == 0, 'expected successful test result'
-            assert initialize_mock.called, 'initialize should be called'
-            # called for every invocation of get_time_box_work
-            assert initialize_mock.call_count == 12, 'wrong initialize call count'
-            assert run_mock.called, 'should be called'
-            args, kwargs = run_mock.call_args
-            test_storage = args[0]
-            assert isinstance(test_storage, NEOSSatName), type(test_storage)
-            assert test_storage.file_name.startswith(
-                'NEOS_SCI'
-            ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
-            assert run_mock.call_count == 10, 'wrong call count'
-    finally:
-        os.chdir(orig_cwd)
+        test_result = composable._run_state()
+    except Exception as e:
+        import traceback
+        import logging
+        logging.error(traceback.format_exc())
+        assert False, f'unexpected exception {e}'
+    assert test_result == 0, 'expected successful test result'
+    assert initialize_mock.called, 'initialize should be called'
+    # called for every invocation of get_time_box_work
+    assert initialize_mock.call_count == 12, 'wrong initialize call count'
+    assert run_mock.called, 'should be called'
+    args, kwargs = run_mock.call_args
+    test_storage = args[0]
+    assert isinstance(test_storage, NEOSSatName), type(test_storage)
+    assert test_storage.file_name.startswith(
+        'NEOS_SCI'
+    ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
+    assert run_mock.call_count == 10, 'wrong call count'
 
 
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')

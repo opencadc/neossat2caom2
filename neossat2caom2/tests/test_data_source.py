@@ -68,9 +68,7 @@
 #
 
 from datetime import datetime, timezone
-from os import chdir, getcwd
 from os.path import basename, dirname, join, realpath
-from tempfile import TemporaryDirectory
 
 from caom2pipe.manage_composable import Config, ExecutionReporter, make_time_tz, State
 from neossat2caom2.composable import NEOS_BOOKMARK
@@ -130,38 +128,31 @@ def test_parse_functions():
 
 
 @patch('neossat2caom2.data_source.query_endpoint_session')
-def test_incremental_source(query_endpoint_mock, test_config):
+def test_incremental_source(query_endpoint_mock, test_config, tmpdir):
     query_endpoint_mock.side_effect = _query_endpoint
-    orig_cwd = getcwd()
-    try:
-        with TemporaryDirectory() as tmp_dir_name:
-            chdir(tmp_dir_name)
+    test_config.change_working_directory(tmpdir)
+    test_config.write_to_file(test_config)
+    State.write_bookmark(test_config.state_fqn, NEOS_BOOKMARK, TEST_START_TIME_STR)
 
-            test_config.change_working_directory(tmp_dir_name)
-            test_config.write_to_file(test_config)
-            State.write_bookmark(test_config.state_fqn, NEOS_BOOKMARK, TEST_START_TIME_STR)
-
-            test_start_time = make_time_tz(TEST_START_TIME_STR)
-            test_subject = CSADataSource(test_config, test_start_time)
-            assert test_subject is not None, 'ctor failure'
-            test_reporter = ExecutionReporter(test_config, observable=Mock(), application='DEFAULT')
-            test_subject.reporter = test_reporter
-            test_result = test_subject.get_time_box_work(
-                test_start_time.timestamp(), datetime.fromtimestamp(1656143080).timestamp()
-            )
-            assert test_result is not None, 'expected dict result'
-            assert len(test_result) == 108, 'wrong size results'
-            temp = sorted([ii.entry_name for ii in test_result])
-            assert (
-                temp[0]
-                == 'https://localhost:8888/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2021/001/'
-                   'NEOS_SCI_2022001030508.fits'
-            ), 'wrong result'
-            assert test_subject.max_time is not None, 'expected date result'
-            assert test_subject.max_time == 1661182200.0, 'wrong date result'
-            assert test_reporter._summary._entries_sum == 108, f'wrong entries {test_reporter._summary.report()}'
-    finally:
-        chdir(orig_cwd)
+    test_start_time = make_time_tz(TEST_START_TIME_STR)
+    test_subject = CSADataSource(test_config, test_start_time)
+    assert test_subject is not None, 'ctor failure'
+    test_reporter = ExecutionReporter(test_config, observable=Mock(), application='DEFAULT')
+    test_subject.reporter = test_reporter
+    test_result = test_subject.get_time_box_work(
+        test_start_time.timestamp(), datetime.fromtimestamp(1656143080).timestamp()
+    )
+    assert test_result is not None, 'expected dict result'
+    assert len(test_result) == 108, 'wrong size results'
+    temp = sorted([ii.entry_name for ii in test_result])
+    assert (
+        temp[0]
+        == 'https://localhost:8888/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2021/001/'
+           'NEOS_SCI_2022001030508.fits'
+    ), 'wrong result'
+    assert test_subject.max_time is not None, 'expected date result'
+    assert test_subject.max_time == 1661182200.0, 'wrong date result'
+    assert test_reporter._summary._entries_sum == 108, f'wrong entries {test_reporter._summary.report()}'
 
 
 def _query_endpoint(url, session):
