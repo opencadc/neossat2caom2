@@ -70,6 +70,7 @@
 import os
 import shutil
 
+from caom2 import ChecksumURI
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 
@@ -118,3 +119,14 @@ def test_preview_augmentation(test_config, tmpdir):
         assert (
                 len(test_obs.planes[product_id].artifacts) == 3
         ), 'wrong artifact post-condition count'
+        if product_id == 'raw':
+            preva = 'cadc:NEOSSAT/2019213215700_raw_prev.png'
+            thumba = 'cadc:NEOSSAT/2019213215700_raw_prev_256.png'
+            assert (
+                test_obs.planes[product_id].artifacts[preva].content_checksum
+                == ChecksumURI('md5:2ecc93cffef79f0068eb6305f232192c')
+            ), 'prev checksum failure'
+            assert (
+                test_obs.planes[product_id].artifacts[thumba].content_checksum
+                == ChecksumURI('md5:f6db75d585a310f13d5f3d442d2e9ec5')
+            ), 'thumb checksum failure'
