@@ -75,7 +75,7 @@ def test_is_valid():
     assert NEOSSatName('anything', 'anything').is_valid()
 
 
-def test_storage_name():
+def test_storage_name(test_config):
     test_builder = nbc.GuessingBuilder(NEOSSatName)
     for f_name in [
         'NEOS_SCI_2019213173800_cord.fits',
@@ -96,7 +96,7 @@ def test_storage_name():
             )
 
 
-def test_storage_name_fqn():
+def test_storage_name_fqn(test_config):
     f_name = 'NEOS_SCI_2019268004930_clean.fits'
     test_fqn = (
         f'/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/'

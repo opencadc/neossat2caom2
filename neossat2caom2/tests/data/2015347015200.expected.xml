@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="934be2d3-22c8-3333-98e9-951acfaf5a39">
+<caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="934be2d3-22c8-3333-98e9-951acfaf5a39">
   <caom2:collection>NEOSSAT</caom2:collection>
   <caom2:observationID>2015347015200</caom2:observationID>
   <caom2:metaRelease>2015-12-13T01:52:00.055</caom2:metaRelease>
@@ -34,6 +34,7 @@
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
+          <caom2:contentLength>42921</caom2:contentLength>
           <caom2:parts>
             <caom2:part caom2:id="693e888c-8e32-48e2-b6b6-57f218a5ab04">
               <caom2:name>0</caom2:name>

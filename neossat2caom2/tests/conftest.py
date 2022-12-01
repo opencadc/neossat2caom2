@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2021.                            (c) 2021.
+#  (c) 2022.                            (c) 2022.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -67,35 +67,21 @@
 # ***********************************************************************
 #
 
-import sys
-from mock import patch
-from caom2pipe import manage_composable as mc
-from neossat2caom2 import APPLICATION, main_app
-import test_main_app
+from caom2pipe.manage_composable import Config, StorageName
+import pytest
+
+COLLECTION = 'NEOSSAT'
+SCHEME = 'cadc'
+PREVIEW_SCHEME = 'cadc'
 
 
-@patch('caom2utils.data_util.StorageClientWrapper')
-def test_in(data_client_mock):
-    data_client_mock.return_value.info.side_effect = (
-        test_main_app.cadcinfo_mock
-    )
-
-    obs_id = '2021212015920'
-    input_file = f'{test_main_app.TEST_DATA_DIR}/{obs_id}.in.xml'
-    output_file = f'{test_main_app.TEST_DATA_DIR}/{obs_id}.actual.xml'
-    expected_file = f'{test_main_app.TEST_DATA_DIR}/{obs_id}.expected.xml'
-
-    sys.argv = (
-        f'{APPLICATION} --no_validate '
-        f'--local {test_main_app.TEST_DATA_DIR}/NEOS_SCI_{obs_id}.fits.header '
-        f'-i {input_file} '
-        f'-o {output_file} '
-        f'--plugin {test_main_app.PLUGIN} --module {test_main_app.PLUGIN} '
-        f'--lineage raw/cadc:NEOSSAT/NEOS_SCI_{obs_id}.fits'
-    ).split()
-    print(sys.argv)
-    main_app.to_caom2()
-
-    compare_result = mc.compare_observations(output_file, expected_file)
-    if compare_result is not None:
-        raise AssertionError(compare_result)
+@pytest.fixture()
+def test_config():
+    config = Config()
+    config.collection = COLLECTION
+    config.preview_scheme = PREVIEW_SCHEME
+    config.scheme = SCHEME
+    StorageName.collection = config.collection
+    StorageName.preview_scheme = config.preview_scheme
+    StorageName.scheme = config.scheme
+    return config

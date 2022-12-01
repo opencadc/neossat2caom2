@@ -71,7 +71,7 @@ import logging
 import traceback
 
 from caom2pipe import manage_composable as mc
-from neossat2caom2 import main_app, scrape
+from neossat2caom2 import scrape
 
 __all__ = ['NeossatValidator', 'validate']
 
@@ -79,7 +79,7 @@ __all__ = ['NeossatValidator', 'validate']
 class NeossatValidator(mc.Validator):
     def __init__(self):
         super(NeossatValidator, self).__init__(
-            source_name=main_app.COLLECTION,
+            source_name=mc.StorageName.collection,
             preview_suffix='png',
             source_tz='America/Montreal',
         )

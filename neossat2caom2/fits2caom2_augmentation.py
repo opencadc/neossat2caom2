@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2019.                            (c) 2019.
+#  (c) 2022.                            (c) 2022.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,88 +62,22 @@
 #  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
 #                                       <http://www.gnu.org/licenses/>.
 #
-#  $Revision: 4 $
+#  : 4 $
 #
 # ***********************************************************************
 #
 
-import os
-import re
-
-from astropy.io import fits
-import matplotlib.pyplot as plt
-import matplotlib.colors as colors
-
-from caom2 import ReleaseType, ProductType
-from caom2pipe import manage_composable as mc
+from caom2pipe.caom_composable import Fits2caom2Visitor
+from neossat2caom2 import NEOSSatMapping
 
 
-class NeossatPreview(mc.PreviewVisitor):
+class NEOSSatFits2caom2Visitor(Fits2caom2Visitor):
+    def __init__(self, observation, **kwargs):
+        super().__init__(observation, **kwargs)
 
-    def __init__(self, **kwargs):
-        super().__init__(ReleaseType.META, **kwargs)
-
-    def generate_plots(self, obs_id):
-        self._logger.debug(f'Begin generate_plots for {obs_id}')
-        image_data = fits.getdata(self._science_fqn, ext=0)
-        image_header = fits.getheader(self._science_fqn, ext=0)
-        count = 0
-        for dpi_factor, fqn in {1024: self._preview_fqn, 256: self._thumb_fqn}.items():
-            count += self._generate_plot(fqn, dpi_factor, image_data, image_header)
-
-        self.add_preview(self._storage_name.prev_uri, self._storage_name.prev, ProductType.PREVIEW)
-        self.add_preview(self._storage_name.thumb_uri, self._storage_name.thumb, ProductType.THUMBNAIL)
-        self._logger.debug('End generate_plots')
-        return count
-
-    def _generate_plot(self, fqn, dpi_factor, image_data, image_header):
-        # DB 07-10-19
-        fig = plt.figure()
-        dpi = fig.get_dpi()
-        fig.set_size_inches(dpi_factor / dpi, dpi_factor / dpi)
-        plt.subplots_adjust(left=0.01, right=0.99, top=0.99, bottom=0.01)
-
-        # DB 08-10-19
-        naxis1 = image_header.get('NAXIS1')
-        naxis2 = image_header.get('NAXIS2')
-        datasec = image_header.get('DATASEC')
-        if datasec is None:
-            xstart = ystart = 0
-            xend = naxis1
-            yend = naxis2
-        else:
-            dsl = list(map(int, re.split('\\[(-*\\d+):(-*\\d+),(-*\\d+):(-*\\d+)\\]', datasec)[1:5]))
-            if (
-                naxis1 < dsl[0]
-                or dsl[1] > naxis1
-                or naxis2 < dsl[2]
-                or dsl[3] > naxis2
-                or dsl[1] - dsl[0] > naxis1
-                or dsl[3] - dsl[2] > naxis2
-            ):
-                xstart = ystart = 0
-                xend = naxis1
-                yend = naxis2
-            else:
-                xstart = dsl[0] - 1
-                xend = dsl[1]
-                ystart = dsl[2] - 1
-                yend = dsl[3]
-
-        plt.imshow(
-            image_data[ystart:yend, xstart:xend],
-            cmap='gray_r',
-            norm=colors.LogNorm(),
-        )
-        plt.axis('off')
-        if os.access(fqn, 0):
-            os.remove(fqn)
-        plt.savefig(fqn, format='png')
-        plt.close()
-        self.add_to_delete(fqn)
-        return 1
+    def _get_mapping(self, headers):
+        return NEOSSatMapping(self._storage_name, headers, self._clients)
 
 
 def visit(observation, **kwargs):
-    previewer = NeossatPreview(**kwargs)
-    return previewer.visit(observation)
+    return NEOSSatFits2caom2Visitor(observation, **kwargs).visit()

@@ -1,3 +1,4 @@
+<?xml version='1.0' encoding='UTF-8'?>
 <caom2:Observation xmlns:caom2="http://www.opencadc.org/caom2/xml/v2.4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="caom2:SimpleObservation" caom2:id="7a8b0ac7-f9a7-4e98-b5bb-152e939c9157" caom2:lastModified="2020-09-12T01:19:50.108" caom2:maxLastModified="2020-09-12T01:20:28.776" caom2:metaChecksum="md5:7b397603df4319c78c8bc29580e8994d" caom2:accMetaChecksum="md5:d145f0b81c5c4640d3ac517a65d1cebd">
   <caom2:collection>NEOSSAT</caom2:collection>
   <caom2:observationID>2020255152013</caom2:observationID>
@@ -45,6 +46,7 @@
           <caom2:productType>science</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
+          <caom2:contentLength>185570</caom2:contentLength>
           <caom2:parts>
             <caom2:part caom2:id="0e434187-58ec-44a0-94a8-1797d73ac64f" caom2:lastModified="2020-09-12T01:20:23.217" caom2:maxLastModified="2020-09-12T01:20:23.217" caom2:metaChecksum="md5:b80a1ee468c4873d3cd6ce5189936009" caom2:accMetaChecksum="md5:c5994d24b914ca69504809d989271418">
               <caom2:name>0</caom2:name>

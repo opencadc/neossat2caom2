@@ -84,12 +84,12 @@ from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 from caom2pipe import run_composable as rc
 from caom2pipe import transfer_composable as tc
-from neossat2caom2 import APPLICATION, preview_augmentation
+from neossat2caom2 import fits2caom2_augmentation, preview_augmentation
 from neossat2caom2 import scrape, data_source, NEOSSatName
 
 NEOS_BOOKMARK = 'neossat_timestamp'
 
-META_VISITORS = []
+META_VISITORS = [fits2caom2_augmentation]
 DATA_VISITORS = [preview_augmentation]
 
 
@@ -107,7 +107,6 @@ def _run():
     return rc.run_by_todo(
         name_builder=builder,
         config=config,
-        command_name=APPLICATION,
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
         store_transfer=transferrer,
@@ -148,12 +147,10 @@ def _run_state():
     return rc.run_by_state(
         config=config,
         name_builder=builder,
-        command_name=APPLICATION,
         bookmark_name=NEOS_BOOKMARK,
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
         end_time=max_date,
-        chooser=None,
         source=incremental_source,
         store_transfer=transferrer,
     )

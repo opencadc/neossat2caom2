@@ -70,12 +70,15 @@
 from mock import patch
 
 from cadcdata import FileInfo
-from neossat2caom2 import main_app, NEOSSatName, APPLICATION
-from neossat2caom2 import COLLECTION
-from caom2pipe import manage_composable as mc
+from neossat2caom2 import NEOSSatName, fits2caom2_augmentation
 
+from caom2.diff import get_differences
+from caom2pipe import astro_composable as ac
+from caom2pipe import manage_composable as mc
+from caom2pipe import reader_composable as rdc
+
+import glob
 import os
-import sys
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
@@ -116,61 +119,47 @@ LOOKUP = {
 
 
 def pytest_generate_tests(metafunc):
-    obs_id_list = []
-    for ii in LOOKUP:
-        obs_id_list.append(ii)
-    metafunc.parametrize('test_name', obs_id_list)
+    metafunc.parametrize('test_name', LOOKUP.keys())
 
 
-@patch('caom2utils.data_util.StorageClientWrapper')
-def test_main_app(data_client_mock, test_name):
-    basename = os.path.basename(test_name)
-    neos_name = NEOSSatName(file_name=basename, entry=basename)
-    output_file = '{}/{}.actual.xml'.format(TEST_DATA_DIR, basename)
-    obs_path = '{}/{}'.format(
-        TEST_DATA_DIR, '{}.expected.xml'.format(neos_name.obs_id)
-    )
+@patch('caom2utils.data_util.get_local_headers_from_fits')
+def test_main_app(header_mock, test_name, test_config):
+    expected_fqn = f'{TEST_DATA_DIR}/{test_name}.expected.xml'
+    expected = mc.read_obs_from_file(expected_fqn)
+    actual_fqn = expected_fqn.replace('expected', 'actual')
+    if os.path.exists(actual_fqn):
+        os.unlink(actual_fqn)
 
-    data_client_mock.return_value.info.side_effect = cadcinfo_mock
-    sys.argv = (
-        '{} --no_validate --local {} --observation {} {} -o {} '
-        '--plugin {} --module {} --lineage {}'.format(
-            APPLICATION,
-            _get_local(test_name),
-            COLLECTION,
-            test_name,
-            output_file,
-            PLUGIN,
-            PLUGIN,
-            _get_lineage(test_name),
-        )
-    ).split()
-    print(sys.argv)
-    main_app.to_caom2()
+    header_mock.side_effect = ac.make_headers_from_file
+    header_files = glob.glob(f'{TEST_DATA_DIR}/*{test_name}*.header')
+    observation = None
+    for header_file in header_files:
+        basename = os.path.basename(header_file)
+        storage_name = NEOSSatName(file_name=basename.replace('.header', ''), source_names=[header_file])
+        metadata_reader = rdc.FileMetadataReader()
+        metadata_reader.set(storage_name)
+        file_type = 'application/fits'
+        metadata_reader.file_info[storage_name.file_uri.replace('.header', '')].file_type = file_type
+        kwargs = {
+            'storage_name': storage_name,
+            'metadata_reader': metadata_reader,
+        }
+        in_fqn = expected_fqn.replace('.expected', '.in')
+        if os.path.exists(in_fqn):
+            observation = mc.read_obs_from_file(in_fqn)
+        observation = fits2caom2_augmentation.visit(observation, **kwargs)
 
-    compare_result = mc.compare_observations(output_file, obs_path)
+    try:
+        compare_result = get_differences(expected, observation)
+    except Exception as e:
+        mc.write_obs_to_file(observation, actual_fqn)
+        raise e
     if compare_result is not None:
-        raise AssertionError(compare_result)
-    # assert False  # cause I want to see logging messages
-
-
-def cadcinfo_mock(uri):
-    return FileInfo(id=uri, file_type='application/fits')
-
-
-def _get_lineage(obs_id):
-    result = ''
-    for ii in LOOKUP[obs_id]:
-        product_id = NEOSSatName.extract_product_id(ii)
-        fits = mc.get_lineage(
-            COLLECTION, product_id, '{}.fits'.format(ii), 'cadc'
+        mc.write_obs_to_file(observation, actual_fqn)
+        compare_text = '\n'.join([r for r in compare_result])
+        msg = (
+            f'Differences found in observation {expected.observation_id}\n'
+            f'{compare_text}'
         )
-        result = '{} {}'.format(result, fits)
-    return result
-
-
-def _get_local(obs_id):
-    result = ''
-    for ii in LOOKUP[obs_id]:
-        result = '{} {}/{}.fits.header'.format(result, TEST_DATA_DIR, ii)
-    return result
+        raise AssertionError(msg)
+    # assert False  # cause I want to see logging messages

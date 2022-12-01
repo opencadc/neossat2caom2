@@ -115,7 +115,7 @@ TEST_FILE_LIST = [
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
 @patch('neossat2caom2.scrape._append_todo')
-def test_run_state(query_mock, run_mock, access_mock):
+def test_run_state(query_mock, run_mock, access_mock, test_config):
     access_mock.return_value = 'https://localhost'
     _write_state(TEST_START_TIME)
     query_mock.side_effect = _append_todo_mock
@@ -140,14 +140,18 @@ def test_run_state(query_mock, run_mock, access_mock):
 
 
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
-@patch('caom2pipe.client_composable.CAOM2RepoClient')
-@patch('caom2utils.data_util.StorageClientWrapper')
-def test_run_by_file(data_client_mock, repo_mock, access_mock):
+# # @patch('caom2pipe.client_composable.CAOM2RepoClient')
+# # @patch('caom2utils.data_util.StorageClientWrapper')
+# def test_run_by_file(data_client_mock, repo_mock, access_mock):
+@patch('caom2pipe.client_composable.ClientCollection')
+@patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
+def test_run_by_file(do_one_mock, clients_mock, access_mock):
     access_mock.return_value = 'https://localhost'
-    repo_mock.return_value.read.side_effect = _mock_repo_read
-    repo_mock.return_value.create.side_effect = Mock()
-    repo_mock.return_value.update.side_effect = _mock_repo_update
-    data_client_mock.return_value.info.side_effect = (
+    do_one_mock.return_value = 0
+    clients_mock.return_value.metadata_client.read.side_effect = _mock_repo_read
+    clients_mock.return_value.metadata_client.create.side_effect = Mock()
+    clients_mock.return_value.metadata_client.update.side_effect = _mock_repo_update
+    clients_mock.return_value.data_client.info.side_effect = (
         _mock_get_file_info
     )
     getcwd_orig = os.getcwd
@@ -157,20 +161,18 @@ def test_run_by_file(data_client_mock, repo_mock, access_mock):
         test_result = composable._run()
         assert test_result == 0, 'wrong result'
         # ClientVisit executor only with the test configuration
-        assert repo_mock.return_value.update.called, 'expect update mock call'
-        assert (
-            repo_mock.return_value.update.call_count == 10
-        ), 'wrong number of mock calls'
+        assert do_one_mock.called, 'expect do_one call'
+        assert do_one_mock.call_count == 10, 'wrong number of mock calls'
     except Exception as e:
         assert False, f'unexpected exception {e}'
     finally:
         os.getcwd = getcwd_orig
 
 
-def test_store():
-    test_config = mc.Config()
-    test_config.logging_level = 'DEBUG'
-    test_config.working_directory = '/tmp'
+def test_store(test_config):
+    tc = mc.Config()
+    tc.logging_level = 'DEBUG'
+    tc.working_directory = '/tmp'
     test_fqn = (
         '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/'
         '268/NEOS_SCI_2019268004930_clean.fits'
@@ -180,24 +182,17 @@ def test_store():
     import logging
     logging.error(test_storage_name)
     transferrer = Mock()
-    cadc_data_client = Mock()
+    clients_mock = Mock()
+    metadata_reader_mock = Mock()
     observable = mc.Observable(
-        mc.Rejected('/tmp/rejected.yml'), mc.Metrics(test_config)
+        mc.Rejected('/tmp/rejected.yml'), mc.Metrics(tc)
     )
-    test_subject = ec.Store(
-        test_config,
-        test_storage_name,
-        APPLICATION,
-        cadc_data_client,
-        observable,
-        transferrer,
-    )
-    test_subject.execute(None)
-    assert cadc_data_client.put.called, 'expect a put call'
-    cadc_data_client.put.assert_called_with(
+    test_subject = ec.Store(tc, observable, transferrer, clients_mock, metadata_reader_mock)
+    test_subject.execute({'storage_name': test_storage_name})
+    assert clients_mock.data_client.put.called, 'expect a put call'
+    clients_mock.data_client.put.assert_called_with(
         '/tmp/2019268004930',
         'cadc:NEOSSAT/NEOS_SCI_2019268004930_clean.fits',
-        None,
     ), 'wrong put args'
     assert transferrer.get.called, 'expect a transfer call'
     transferrer.get.assert_called_with(
@@ -215,9 +210,6 @@ def _append_todo_mock(ignore1, ignore2, ignore3, ignore4, ignore5, ignore6):
 
 
 def _check_execution(run_mock):
-    import logging
-
-    logging.error('called')
     assert run_mock.called, 'should have been called'
     args, kwargs = run_mock.call_args
     assert args[3] == APPLICATION, 'wrong command'
@@ -254,8 +246,8 @@ def _mock_repo_update(ignore1):
     return None
 
 
-def _mock_get_file_info(archive, file_id):
-    if '_prev' in file_id:
+def _mock_get_file_info(uri):
+    if '_prev' in uri:
         return {'type': 'image/jpeg'}
     else:
         return {'type': 'application/fits'}
