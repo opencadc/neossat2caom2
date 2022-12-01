@@ -334,14 +334,13 @@ class NEOSSatMapping(TelescopeMapping):
 
     def update(self, observation, file_info):
         """Called to fill multiple CAOM model elements and/or attributes. """
-        self._logger.error('Begin update.')
+        self._logger.debug('Begin update.')
         for plane in observation.planes.values():
             if plane.product_id != self._storage_name.product_id:
                 continue
             for artifact in plane.artifacts.values():
                 if self._storage_name.file_uri == artifact.uri:
                     # TODO why isn't this condition a continue??????
-                    self._logger.error(file_info)
                     update_artifact_meta(artifact, file_info)
                 temp_parts = TypedOrderedDict(Part,)
                 # need to rename the BINARY TABLE extensions, which have
