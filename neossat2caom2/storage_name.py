@@ -3,7 +3,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2022.                            (c) 2022.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -62,92 +62,84 @@
 #  <http://www.gnu.org/licenses/>.      pas le cas, consultez :
 #                                       <http://www.gnu.org/licenses/>.
 #
-#  $Revision: 4 $
+#  : 4 $
 #
 # ***********************************************************************
 #
-import os
-import pytest
 
-from mock import patch
-
-from caom2 import ChecksumURI
-from neossat2caom2 import preview_augmentation, NEOSSatName
-from caom2pipe import manage_composable as mc
+from caom2pipe.manage_composable import StorageName
 
 
-THIS_DIR = os.path.dirname(os.path.realpath(__file__))
-TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
-TEST_OBS = '2019213215700'
-TEST_FILES = [
-    'NEOS_SCI_2019213215700.fits',
-    'NEOS_SCI_2019213215700_cor.fits',
-    'NEOS_SCI_2019213215700_cord.fits',
-]
+class NEOSSatName(StorageName):
+    """Naming rules:
+    - support mixed-case file name storage, and mixed-case obs id values
+    - support uncompressed files in storage
+    """
 
+    def __init__(self, file_name, source_names):
+        super().__init__(file_name=file_name, source_names=source_names)
+        self._logger.debug(self)
 
-def test_preview_aug_visit():
-    with pytest.raises(mc.CadcException):
-        preview_augmentation.visit(None)
+    def __str__(self):
+        return f'\n' \
+               f'      obs id: {self._obs_id}\n' \
+               f'   file name: {self._file_name}\n' \
+               f'source names: {self.source_names}\n'
 
+    def is_valid(self):
+        return True
+    @property
+    def prev(self):
+        """The preview file name for the file."""
+        return '{}_{}_prev.png'.format(self.obs_id, self._product_id)
 
-# def test_preview_augment_plane():
-#     for f_name in TEST_FILES:
-#         neoss_name = NEOSSatName(file_name=f_name)
-#         preview = os.path.join(TEST_DATA_DIR, neoss_name.prev)
-#         thumb = os.path.join(TEST_DATA_DIR, neoss_name.thumb)
-#         if os.path.exists(preview):
-#             os.remove(preview)
-#         if os.path.exists(thumb):
-#             os.remove(thumb)
-#         import logging
-#         test_fqn = os.path.join(TEST_DATA_DIR, f'{TEST_OBS}.fits.xml')
-#         source_fqn = os.path.join(TEST_DATA_DIR, f'test_{TEST_OBS}.fits.xml')
-#         logging.error(f'test_fqn {test_fqn}')
-#         logging.error(f'source-fqn {source_fqn}')
-#         # with open(test_fqn, 'w') as fa:
-#         #     with open(source_fqn, 'r') as fb:
-#         #         temp = fb.readlines()
-#         #     fa.writelines(temp)
-#         #     # logging.error(temp)
-#
-#         with open(test_fqn, 'r') as fa:
-#             logging.error(fa.readlines())
-#
-#
-#         test_obs = mc.read_obs_from_file(test_fqn)
-#         import logging
-#         # logging.error(test_obs)
-#         assert len(test_obs.planes[neoss_name.product_id].artifacts) == 1
-#         test_config = mc.Config()
-#         test_config.observe_execution = True
-#         test_metrics = mc.Metrics(test_config)
-#         test_observable = mc.Observable(rejected=None,
-#                                         metrics=test_metrics)
-#
-#         # assert False
-#
-#         test_kwargs = {'working_directory': TEST_DATA_DIR,
-#                        'cadc_client': None,
-#                        'observable': test_observable,
-#                        'stream': test_config.stream,
-#                        'science_file': f_name}
-#         with patch('neossat2caom2.preview_augmentation._store_smalls'):
-#             test_result = preview_augmentation.visit(test_obs, **test_kwargs)
-#             assert test_result is not None, 'expected a visit return value'
-#             assert test_result['artifacts'] == 2
-#             assert len(test_obs.planes[neoss_name.product_id].artifacts) == 3
-#
-#             if f_name == 'NEOS_SCI_2019213215700.fits':
-#                 preva = 'ad:NEOSS/2019213215700_raw_prev.png'
-#                 thumba = 'ad:NEOSS/2019213215700_raw_prev_256.png'
-#                 assert os.path.exists(preview)
-#                 assert os.path.exists(thumb)
-#                 assert test_obs.planes[neoss_name.product_id].\
-#                     artifacts[preva].content_checksum == \
-#                     ChecksumURI('md5:15828d4014363f0d615d168c75f30003'), \
-#                     'prev checksum failure'
-#                 assert test_obs.planes[neoss_name.product_id].\
-#                     artifacts[thumba].content_checksum == \
-#                     ChecksumURI('md5:20198c5ccc5a477bd77fbbbb2890a8cd'), \
-#                     'thumb checksum failure'
+    @property
+    def thumb(self):
+        """The thumbnail file name for the file."""
+        return '{}_{}_prev_256.png'.format(self.obs_id, self._product_id)
+
+    @staticmethod
+    def remove_extensions(value):
+        return (
+            value.replace('.fits', '')
+            .replace('.header', '')
+            .replace('.gz', '')
+        )
+
+    def set_file_id(self):
+        self._file_id = NEOSSatName.remove_extensions(self._file_name)
+
+    def set_obs_id(self):
+        self._obs_id = NEOSSatName.extract_obs_id(self._file_id)
+
+    def set_product_id(self):
+        self._product_id = NEOSSatName.extract_product_id(self._file_id)
+
+    @staticmethod
+    def extract_obs_id(value):
+        return (
+            value.replace('_clean', '')
+            .replace('NEOS_SCI_', '')
+            .replace('_cord', '')
+            .replace('_cor', '')
+        )
+
+    @staticmethod
+    def extract_product_id(value):
+        # DB 18-09-19
+        # I think JJ suggested that product ID should be ‘cor’,  ‘cord’,
+        # and so maybe ‘clean’.  i.e. depends on the trailing characters
+        # after final underscore in the file name.  Perhaps ‘raw’ for files
+        # without any such characters.
+        result = 'raw'
+        if '_cord' in value:
+            result = 'cord'
+        elif '_cor' in value:
+            result = 'cor'
+        elif '_clean' in value:
+            result = 'clean'
+        return result
+
+    @staticmethod
+    def is_preview(entry):
+        return '.png' in entry

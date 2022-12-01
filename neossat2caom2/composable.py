@@ -78,14 +78,13 @@ import logging
 import sys
 import traceback
 
-from datetime import datetime
-
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 from caom2pipe import run_composable as rc
-from caom2pipe import transfer_composable as tc
+from caom2pipe.transfer_composable import HttpTransfer
 from neossat2caom2 import fits2caom2_augmentation, preview_augmentation
-from neossat2caom2 import scrape, data_source, NEOSSatName
+from neossat2caom2.data_source import CSADataSource
+from neossat2caom2.storage_name import NEOSSatName
 
 NEOS_BOOKMARK = 'neossat_timestamp'
 
@@ -103,7 +102,7 @@ def _run():
     builder = nbc.GuessingBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
-    transferrer = tc.FtpTransfer(config.data_sources[0])
+    transferrer = HttpTransfer()
     return rc.run_by_todo(
         name_builder=builder,
         config=config,
@@ -137,20 +136,17 @@ def _run_state():
     config.get_executors()
     state = mc.State(config.state_fqn)
     start_time = state.get_bookmark(NEOS_BOOKMARK)
-    temp = mc.increment_time(start_time, 0).timestamp()
-    todo_list, max_timestamp = scrape.build_todo(
-        temp, config.working_directory, config.state_fqn
-    )
-    max_date = datetime.fromtimestamp(max_timestamp)
-    incremental_source = data_source.IncrementalSource(todo_list)
-    transferrer = tc.FtpTransfer(config.data_sources[0])
+    incremental_source = CSADataSource(config, start_time)
+    # set the max time
+    incremental_source.initialize_todo()
+    transferrer = HttpTransfer()
     return rc.run_by_state(
         config=config,
         name_builder=builder,
         bookmark_name=NEOS_BOOKMARK,
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
-        end_time=max_date,
+        end_time=incremental_source.max_time,
         source=incremental_source,
         store_transfer=transferrer,
     )

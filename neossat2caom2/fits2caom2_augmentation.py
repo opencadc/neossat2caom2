@@ -68,7 +68,7 @@
 #
 
 from caom2pipe.caom_composable import Fits2caom2Visitor
-from neossat2caom2 import NEOSSatMapping
+from neossat2caom2.main_app import NEOSSatMapping
 
 
 class NEOSSatFits2caom2Visitor(Fits2caom2Visitor):

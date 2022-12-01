@@ -50,7 +50,10 @@ rejected_directory: /usr/src/app/rejected
 state_file_name: state.yml
 interval: 600
 data_sources:
-  - ftp.asc-csa.gc.ca
+  - https://data.asc-csa.gc.ca/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/
+data_source_extensions:
+  - .fits
+  - .fits.gz
 storage_inventory_resource_id: ivo://cadc.nrc.ca/uvic/minoc
 # how to control the work that gets done
 # possible values are:

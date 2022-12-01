@@ -70,16 +70,23 @@
 import logging
 import traceback
 
-from caom2pipe import manage_composable as mc
-from neossat2caom2 import scrape
+from os.path import join
+
+from caom2pipe.manage_composable import StorageName, Validator, write_as_yaml
+from neossat2caom2.data_source import CSADataSource
+
 
 __all__ = ['NeossatValidator', 'validate']
 
+NEOSSAT_SOURCE_LIST = 'source_listing.yml'
+# the earliest dated file I could find on the FTP site was 10-18-18
+NEOSSAT_START_DATE = '2018-10-01T00:00:00.000'
 
-class NeossatValidator(mc.Validator):
+
+class NeossatValidator(Validator):
     def __init__(self):
         super(NeossatValidator, self).__init__(
-            source_name=mc.StorageName.collection,
+            source_name=StorageName.collection,
             preview_suffix='png',
             source_tz='America/Montreal',
         )
@@ -88,9 +95,7 @@ class NeossatValidator(mc.Validator):
         self._fully_qualified_list = None
 
     def read_from_source(self):
-        validator_list, fully_qualified_list = scrape.list_for_validate(
-            self._config
-        )
+        validator_list, fully_qualified_list = list_for_validate(self._config)
         self._fully_qualified_list = fully_qualified_list
         return validator_list
 
@@ -103,6 +108,29 @@ class NeossatValidator(mc.Validator):
                     f.write(f'{self._fully_qualified_list[entry]}\n')
                 for entry in self._destination_data:
                     f.write(f'{self._fully_qualified_list[entry]}\n')
+
+
+def list_for_validate(config):
+    """
+    :return: A dict, where keys are file names available from the CSA Open Data
+        https site, and values are the timestamps for the files at the CSA site.
+    """
+    # want the whole list for validation, so pick the earliest timestamp, which is also the default timestamp
+    data_source = CSADataSource(config)
+    temp = data_source.get_work()
+
+    list_fqn = join(config.working_directory, NEOSSAT_SOURCE_LIST)
+    write_as_yaml(temp, list_fqn)
+
+    # remove the fully-qualified path names from the validator list
+    # while creating a dictionary where the file name is the key, and the
+    # fully-qualified file name at the HTTPS site is the value
+    validator_list = {ii.split('/')[-1]: ii for ii in temp}
+    result = {}
+    for ts, file_list in data_source._todo_list.items():
+        for f in file_list:
+            result[f.split('/')[-1]] = ts
+    return result, validator_list
 
 
 def validate():

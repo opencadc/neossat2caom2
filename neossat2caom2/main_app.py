@@ -78,85 +78,10 @@ from caom2pipe.caom_composable import TelescopeMapping
 from caom2pipe import manage_composable as mc
 
 
-__all__ = ['APPLICATION', 'NEOSSatMapping', 'NEOSSatName']
+__all__ = ['APPLICATION', 'NEOSSatMapping']
 
 
 APPLICATION = 'neossat2caom2'
-
-
-class NEOSSatName(mc.StorageName):
-    """Naming rules:
-    - support mixed-case file name storage, and mixed-case obs id values
-    - support uncompressed files in storage
-    """
-
-    def __init__(self, file_name, source_names):
-        super().__init__(file_name=file_name, source_names=source_names)
-        self._logger.debug(self)
-
-    def __str__(self):
-        return f'\n' \
-               f'      obs id: {self._obs_id}\n' \
-               f'   file name: {self._file_name}\n' \
-               f'source names: {self.source_names}\n'
-
-    def is_valid(self):
-        return True
-    @property
-    def prev(self):
-        """The preview file name for the file."""
-        return '{}_{}_prev.png'.format(self.obs_id, self._product_id)
-
-    @property
-    def thumb(self):
-        """The thumbnail file name for the file."""
-        return '{}_{}_prev_256.png'.format(self.obs_id, self._product_id)
-
-    @staticmethod
-    def remove_extensions(value):
-        return (
-            value.replace('.fits', '')
-            .replace('.header', '')
-            .replace('.gz', '')
-        )
-
-    def set_file_id(self):
-        self._file_id = NEOSSatName.remove_extensions(self._file_name)
-
-    def set_obs_id(self):
-        self._obs_id = NEOSSatName.extract_obs_id(self._file_id)
-
-    def set_product_id(self):
-        self._product_id = NEOSSatName.extract_product_id(self._file_id)
-
-    @staticmethod
-    def extract_obs_id(value):
-        return (
-            value.replace('_clean', '')
-            .replace('NEOS_SCI_', '')
-            .replace('_cord', '')
-            .replace('_cor', '')
-        )
-
-    @staticmethod
-    def extract_product_id(value):
-        # DB 18-09-19
-        # I think JJ suggested that product ID should be ‘cor’,  ‘cord’,
-        # and so maybe ‘clean’.  i.e. depends on the trailing characters
-        # after final underscore in the file name.  Perhaps ‘raw’ for files
-        # without any such characters.
-        result = 'raw'
-        if '_cord' in value:
-            result = 'cord'
-        elif '_cor' in value:
-            result = 'cor'
-        elif '_clean' in value:
-            result = 'clean'
-        return result
-
-    @staticmethod
-    def is_preview(entry):
-        return '.png' in entry
 
 
 class NEOSSatMapping(TelescopeMapping):

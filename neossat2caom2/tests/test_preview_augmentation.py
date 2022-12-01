@@ -70,57 +70,63 @@
 import os
 import shutil
 
+from caom2 import ChecksumURI
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
+
 from neossat2caom2 import preview_augmentation, NEOSSatName
-from tempfile import TemporaryDirectory
 import test_main_app
 
 
-def test_preview_augmentation(test_config):
-    orig_cwd = os.getcwd()
-    try:
-        with TemporaryDirectory() as tmp_dir_name:
-            os.chdir(tmp_dir_name)
-            test_config.data_sources = ['/test_files']
-            test_config.change_working_directory(tmp_dir_name)
-            test_obs_fqn = f'{test_main_app.TEST_DATA_DIR}/2019213215700.expected.xml'
-            test_obs = mc.read_obs_from_file(test_obs_fqn)
-            assert test_obs is not None, 'expect an input'
-            assert len(test_obs.planes) == 3, 'expect 3 planes'
-            for product_id in ['raw', 'cor', 'cord']:
-                assert (
-                    len(test_obs.planes[product_id].artifacts) == 1
-                ), 'wrong artifact pre-condition count'
+def test_preview_augmentation(test_config, tmpdir):
+    test_config.data_sources = ['/test_files']
+    test_config.change_working_directory(tmpdir)
+    test_obs_fqn = f'{test_main_app.TEST_DATA_DIR}/2019213215700.expected.xml'
+    test_obs = mc.read_obs_from_file(test_obs_fqn)
+    assert test_obs is not None, 'expect an input'
+    assert len(test_obs.planes) == 3, 'expect 3 planes'
+    for product_id in ['raw', 'cor', 'cord']:
+        assert (
+            len(test_obs.planes[product_id].artifacts) == 1
+        ), 'wrong artifact pre-condition count'
 
-            test_file_names = [
-                'NEOS_SCI_2019213215700_cor.fits',
-                'NEOS_SCI_2019213215700.fits',
-                'NEOS_SCI_2019213215700_cord.fits',
-            ]
+    test_file_names = [
+        'NEOS_SCI_2019213215700_cor.fits',
+        'NEOS_SCI_2019213215700.fits',
+        'NEOS_SCI_2019213215700_cord.fits',
+    ]
 
-            test_builder = nbc.GuessingBuilder(NEOSSatName)
-            for f_name in test_file_names:
-                test_fqn = f'/test_files/{f_name}'
-                if not os.path.exists(test_fqn):
-                    shutil.copy(f'{test_main_app.TEST_DATA_DIR}/{f_name}', test_fqn)
-                test_storage_name = test_builder.build(test_fqn)
-                if os.path.exists(f'/test_files/{test_storage_name.prev}'):
-                    os.unlink(f'/test_files/{test_storage_name.prev}')
-                if os.path.exists(f'/test_files/{test_storage_name.thumb}'):
-                    os.unlink(f'/test_files/{test_storage_name.thumb}')
-                kwargs = {
-                    'working_directory': '/test_files',
-                    'storage_name': test_storage_name,
-                }
-                test_obs = preview_augmentation.visit(test_obs, **kwargs)
-                assert test_obs is not None, 'expect a result'
-                assert os.path.exists(f'/test_files/{test_storage_name.prev}')
-                assert os.path.exists(f'/test_files/{test_storage_name.thumb}')
+    test_builder = nbc.GuessingBuilder(NEOSSatName)
+    for f_name in test_file_names:
+        test_fqn = f'/test_files/{f_name}'
+        if not os.path.exists(test_fqn):
+            shutil.copy(f'{test_main_app.TEST_DATA_DIR}/{f_name}', test_fqn)
+        test_storage_name = test_builder.build(test_fqn)
+        if os.path.exists(f'/test_files/{test_storage_name.prev}'):
+            os.unlink(f'/test_files/{test_storage_name.prev}')
+        if os.path.exists(f'/test_files/{test_storage_name.thumb}'):
+            os.unlink(f'/test_files/{test_storage_name.thumb}')
+        kwargs = {
+            'working_directory': '/test_files',
+            'storage_name': test_storage_name,
+        }
+        test_obs = preview_augmentation.visit(test_obs, **kwargs)
+        assert test_obs is not None, 'expect a result'
+        assert os.path.exists(f'/test_files/{test_storage_name.prev}')
+        assert os.path.exists(f'/test_files/{test_storage_name.thumb}')
 
-            for product_id in ['raw', 'cor', 'cord']:
-                assert (
-                        len(test_obs.planes[product_id].artifacts) == 3
-                ), 'wrong artifact post-condition count'
-    finally:
-        os.chdir(orig_cwd)
+    for product_id in ['raw', 'cor', 'cord']:
+        assert (
+                len(test_obs.planes[product_id].artifacts) == 3
+        ), 'wrong artifact post-condition count'
+        if product_id == 'raw':
+            preva = 'cadc:NEOSSAT/2019213215700_raw_prev.png'
+            thumba = 'cadc:NEOSSAT/2019213215700_raw_prev_256.png'
+            assert (
+                test_obs.planes[product_id].artifacts[preva].content_checksum
+                == ChecksumURI('md5:2ecc93cffef79f0068eb6305f232192c')
+            ), 'prev checksum failure'
+            assert (
+                test_obs.planes[product_id].artifacts[thumba].content_checksum
+                == ChecksumURI('md5:f6db75d585a310f13d5f3d442d2e9ec5')
+            ), 'thumb checksum failure'
