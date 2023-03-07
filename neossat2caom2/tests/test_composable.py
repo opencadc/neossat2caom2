@@ -70,7 +70,7 @@
 import os
 
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from mock import patch, Mock, PropertyMock
 
 from caom2 import SimpleObservation
@@ -84,44 +84,34 @@ from neossat2caom2.storage_name import NEOSSatName
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
 STATE_FILE = os.path.join(TEST_DATA_DIR, 'state.yml')
-START_TIME = datetime.utcnow()
+START_TIME = datetime.utcnow().replace(tzinfo=timezone.utc)
 TEST_START_TIME = (START_TIME - timedelta(days=2)).isoformat()
-TEST_TIMESTAMP_1 = (START_TIME - timedelta(days=1)).timestamp()
-TEST_TIMESTAMP_2 = (START_TIME - timedelta(hours=12)).timestamp()
+TEST_DT_1 = (START_TIME - timedelta(days=1))
+TEST_DT_2 = (START_TIME - timedelta(hours=12))
 
 
 TEST_FILE_LIST = [
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268004930_clean.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268004930.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268005240_clean.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268005240.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268005550_clean.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268005550.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268005900_clean.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268005900.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268010210_clean.fits',
-    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/'
-    'NEOS_SCI_2019268010210.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268004930_clean.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268004930.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268005240_clean.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268005240.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268005550_clean.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268005550.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268005900_clean.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268005900.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268010210_clean.fits',
+    '/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268010210.fits',
 ]
 
 x = defaultdict(list)
 for f_name in TEST_FILE_LIST[:8]:
-    x[TEST_TIMESTAMP_1].append(f_name)
+    x[TEST_DT_1].append(f_name)
 for f_name in TEST_FILE_LIST[8:]:
-    x[TEST_TIMESTAMP_2].append(f_name)
+    x[TEST_DT_2].append(f_name)
 
 
 @patch('neossat2caom2.data_source.CSADataSource.todo_list', new_callable=PropertyMock(return_value=x))
-@patch('neossat2caom2.data_source.CSADataSource.max_time', new_callable=PropertyMock(return_value=TEST_TIMESTAMP_2))
+@patch('neossat2caom2.data_source.CSADataSource.max_time', new_callable=PropertyMock(return_value=TEST_DT_2))
 @patch('neossat2caom2.data_source.CSADataSource.initialize_todo')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')

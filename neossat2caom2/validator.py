@@ -72,7 +72,8 @@ import traceback
 
 from os.path import join
 
-from caom2pipe.manage_composable import StorageName, Validator, write_as_yaml
+from caom2pipe.manage_composable import StorageName, write_as_yaml
+from caom2pipe.validator_composable import Validator
 from neossat2caom2.data_source import CSADataSource
 
 
@@ -97,16 +98,23 @@ class NeossatValidator(Validator):
     def read_from_source(self):
         validator_list, fully_qualified_list = list_for_validate(self._config)
         self._fully_qualified_list = fully_qualified_list
-        return validator_list
+        from pandas import DataFrame, Series
+        return DataFrame(
+            {
+                'url': Series(validator_list['url'], dtype='object'),
+                'f_name': Series(validator_list['f_name'], dtype='object'),
+                'dt': Series(validator_list['dt'], dtype='datetime64[ns]'),
+            },
+        )
 
     def write_todo(self):
-        if len(self._source) == 0:
+        if len(self._source_missing) == 0 and len(self._destination_older) == 0:
             logging.info(f'No entries to write to {self._config.work_fqn}')
         else:
             with open(self._config.work_fqn, 'w') as f:
-                for entry in self._source:
+                for entry in self._source_missing:
                     f.write(f'{self._fully_qualified_list[entry]}\n')
-                for entry in self._destination_data:
+                for entry in self._destination_older:
                     f.write(f'{self._fully_qualified_list[entry]}\n')
 
 
@@ -126,10 +134,12 @@ def list_for_validate(config):
     # while creating a dictionary where the file name is the key, and the
     # fully-qualified file name at the HTTPS site is the value
     validator_list = {ii.split('/')[-1]: ii for ii in temp}
-    result = {}
-    for ts, file_list in data_source._todo_list.items():
+    result = {'url': [], 'f_name': [], 'dt': []}
+    for dt, file_list in data_source._todo_list.items():
         for f in file_list:
-            result[f.split('/')[-1]] = ts
+            result['url'].append(f)
+            result['f_name'].append(f.split('/')[-1])
+            result['dt'].append(dt)
     return result, validator_list
 
 

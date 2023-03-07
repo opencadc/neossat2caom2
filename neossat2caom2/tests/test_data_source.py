@@ -95,7 +95,7 @@ def test_parse_functions():
     test_config.state_fqn = join(TEST_DATA_DIR, 'parse_test_state.yml')
     test_subject = CSADataSource(test_config)
     assert test_subject is not None, 'ctor failure'
-    test_subject._start_time = make_time_tz(TEST_START_TIME_STR)
+    test_subject._start_time = make_time_tz(TEST_START_TIME_STR, test_time_zone)
 
     with open(TOP_PAGE) as f:
         test_content = f.read()
@@ -134,13 +134,13 @@ def test_incremental_source(query_endpoint_mock, test_config, tmpdir):
     test_config.write_to_file(test_config)
     State.write_bookmark(test_config.state_fqn, NEOS_BOOKMARK, TEST_START_TIME_STR)
 
-    test_start_time = make_time_tz(TEST_START_TIME_STR)
+    test_start_time = make_time_tz(TEST_START_TIME_STR, test_time_zone)
     test_subject = CSADataSource(test_config, test_start_time)
     assert test_subject is not None, 'ctor failure'
     test_reporter = ExecutionReporter(test_config, observable=Mock(), application='DEFAULT')
     test_subject.reporter = test_reporter
     test_result = test_subject.get_time_box_work(
-        test_start_time.timestamp(), datetime.fromtimestamp(1656143080).timestamp()
+        test_start_time, datetime.fromtimestamp(1656143080, tz=test_time_zone)
     )
     assert test_result is not None, 'expected dict result'
     assert len(test_result) == 108, 'wrong size results'
@@ -151,7 +151,7 @@ def test_incremental_source(query_endpoint_mock, test_config, tmpdir):
            'NEOS_SCI_2022001030508.fits'
     ), 'wrong result'
     assert test_subject.max_time is not None, 'expected date result'
-    assert test_subject.max_time == 1661182200.0, 'wrong date result'
+    assert test_subject.max_time == datetime(2022, 8, 22, 15, 30, tzinfo=test_time_zone), 'wrong date result'
     assert test_reporter._summary._entries_sum == 108, f'wrong entries {test_reporter._summary.report()}'
 
 

@@ -124,9 +124,9 @@ def test_preview_augmentation(test_config, tmpdir):
             thumba = 'cadc:NEOSSAT/2019213215700_raw_prev_256.png'
             assert (
                 test_obs.planes[product_id].artifacts[preva].content_checksum
-                == ChecksumURI('md5:2ecc93cffef79f0068eb6305f232192c')
+                == ChecksumURI('md5:6c3a193301f9236384bd5bfb9065ad3a')
             ), 'prev checksum failure'
             assert (
                 test_obs.planes[product_id].artifacts[thumba].content_checksum
-                == ChecksumURI('md5:f6db75d585a310f13d5f3d442d2e9ec5')
+                == ChecksumURI('md5:e9895dde4bc52cc403615c777c13d740')
             ), 'thumb checksum failure'

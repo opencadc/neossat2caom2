@@ -98,7 +98,7 @@ class CSADataSource(dsc.DataSource):
         self._data_sources = config.data_sources
         self._session = get_endpoint_session()
         self._start_time = start_time
-        self._max_time = start_time.timestamp()
+        self._max_time = start_time
         # self._todo_list - the list of all work queried from the http data source, self._work is the time-boxed list
         # constructed using that content
         self._todo_list = defaultdict(list)
@@ -113,21 +113,21 @@ class CSADataSource(dsc.DataSource):
         """Just here for the mocking."""
         return self._todo_list
 
-    def get_time_box_work(self, prev_exec_time, exec_time):
+    def get_time_box_work(self, prev_exec_dt, exec_dt):
         """
         Time-boxing the file url list returned from the site scrape.
 
-        :param prev_exec_time timestamp start of the timestamp chunk
-        :param exec_time timestamp end of the timestamp chunk
+        :param prev_exec_dt datetime start of the time chunk
+        :param exec_dt datetime end of the time chunk
         :return: a list of StateRunnerMeta instances, for file names with time they were modified
         """
         self._logger.debug('Begin get_time_box_work')
         self.initialize_todo()
         self._work = deque()
-        for time_stamp in sorted(self.todo_list):
-            if prev_exec_time < time_stamp <= exec_time:
-                for entry in self.todo_list[time_stamp]:
-                    self._work.append(dsc.StateRunnerMeta(entry, time_stamp))
+        for dt in sorted(self.todo_list):
+            if prev_exec_dt < dt <= exec_dt:
+                for entry in self.todo_list[dt]:
+                    self._work.append(dsc.StateRunnerMeta(entry, dt))
         self._capture_todo()
         self._logger.debug('End get_time_box_work')
         return self._work
@@ -185,19 +185,19 @@ class CSADataSource(dsc.DataSource):
                                             files = self._parse_day_page(day_url, response.text)
                                             self._logger.info(f'Found {len(files)} files on {day_url}.')
                                             response.close()
-                                            self._consolidate_lists_of_files_by_timestamp(files)
+                                            self._consolidate_lists_of_files_by_dt(files)
             finally:
                 if response is not None:
                     response.close()
 
-    def _consolidate_lists_of_files_by_timestamp(self, files):
+    def _consolidate_lists_of_files_by_dt(self, files):
         for dt in files:
-            self._todo_list[dt.timestamp()] += files[dt]
-            self._max_time = max(self._max_time, dt.timestamp())
+            self._todo_list[dt] += files[dt]
+            self._max_time = max(self._max_time, dt)
 
     def _parse_day_page(self, root_url, html_string):
         """
-        :return: dict, keys are timestamps, values are URLs, so the dict can be sorted
+        :return: dict, keys are datetimes, values are URLs, so the dict can be sorted
         """
         result = defaultdict(list)
         soup = BeautifulSoup(html_string, features='lxml')
@@ -206,7 +206,7 @@ class CSADataSource(dsc.DataSource):
             f_name = href.get('href')
             if f_name.endswith('.fits') or f_name.endswith('.fits.gz'):
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str)
+                dt = make_time_tz(dt_str, self.timezone)
                 if dt >= self._start_time:
                     temp = f'{root_url}/{f_name}'
                     self._logger.debug(f'Adding file: {temp}')
@@ -228,7 +228,7 @@ class CSADataSource(dsc.DataSource):
                 continue
             if y == 'NESS' or int(y) >= 2017:
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str)
+                dt = make_time_tz(dt_str, self.timezone)
                 if dt >= self._start_time:
                     temp = f'{root_url}{y}'
                     self._logger.debug(f'Adding Top Level: {temp}')
@@ -250,7 +250,7 @@ class CSADataSource(dsc.DataSource):
                 continue
             if 1 <= int_d <= 366:
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str)
+                dt = make_time_tz(dt_str, self.timezone)
                 if dt >= self._start_time:
                     temp = f'{root_url}/{d}'
                     self._logger.debug(f'Adding Day: {temp}')

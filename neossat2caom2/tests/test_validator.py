@@ -70,6 +70,7 @@
 import os
 
 from caom2pipe import manage_composable as mc
+from caom2pipe.validator_composable import VALIDATE_OUTPUT
 
 from neossat2caom2 import validator
 
@@ -77,20 +78,20 @@ from mock import patch, Mock
 
 
 @patch('neossat2caom2.data_source.CSADataSource.get_work')
-@patch('cadcdata.core.net.BaseWsClient.post')
+@patch('cadcutils.net.BaseWsClient.post')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 def test_validator(caps_mock, post_mock, get_work_mock, test_config, tmpdir):
     caps_mock.return_value = 'https://localhost:8888'
     response = Mock()
     response.status_code = 200
     y = [
-        b'uri\n'
-        b'cadc:NEOSSAT/NEOS_SCI_2019213215700_cord.fits\n'
-        b'cadc:NEOSSAT/NEOS_SCI_2019213215700_cor.fits\n'
-        b'cadc:NEOSSAT/NEOS_SCI_2019213215700.fits\n'
+        b'uri\tcontentLastModified\n'
+        b'cadc:NEOSSAT/NEOS_SCI_2019213215700_cord.fits\t2022-01-01 12:00:00+00:00\n'
+        b'cadc:NEOSSAT/NEOS_SCI_2019213215700_cor.fits\t2022-01-01 12:00:00+00:00\n'
+        b'cadc:NEOSSAT/NEOS_SCI_2019213215700.fits\t2022-01-01 12:00:00+00:00\n'
     ]
 
-    x = [b'uri,contentLastModified\n']
+    x = [b'uri\tcontentLastModified\n']
 
     global count
     count = 0
@@ -115,15 +116,13 @@ def test_validator(caps_mock, post_mock, get_work_mock, test_config, tmpdir):
         f.write('proxy content')
 
     test_subject = validator.NeossatValidator()
-    test_listing_fqn = f'{test_config.working_directory}/{mc.VALIDATE_OUTPUT}'
+    test_listing_fqn = f'{test_config.working_directory}/not_at_NEOSSAT.txt'
     test_source, test_meta, test_data = test_subject.validate()
     assert test_source is not None, 'expected source result'
     assert test_meta is not None, 'expected destination result'
     assert len(test_source) == 0, 'wrong number of source results'
     assert len(test_meta) == 3, 'wrong # of destination results'
-    assert (
-        'NEOS_SCI_2019213215700_cor.fits' in test_meta
-    ), 'wrong destination content'
+    test_meta.f_name.isin(['NEOS_SCI_2019213215700_cor.fits']), 'wrong destination content'
     assert len(test_data) == 0, 'wrong number of data results'
     assert os.path.exists(test_listing_fqn), 'should create file record'
     test_subject.write_todo()
