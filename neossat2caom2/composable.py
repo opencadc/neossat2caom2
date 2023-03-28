@@ -78,6 +78,8 @@ import logging
 import sys
 import traceback
 
+from dateutil import tz
+
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 from caom2pipe import run_composable as rc
@@ -134,7 +136,7 @@ def _run_state():
     builder = nbc.GuessingBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
-    state = mc.State(config.state_fqn)
+    state = mc.State(config.state_fqn, tz.UTC)
     start_time = state.get_bookmark(NEOS_BOOKMARK)
     incremental_source = CSADataSource(config, start_time)
     # set the max time

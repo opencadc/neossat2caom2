@@ -72,7 +72,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 
 from caom2pipe import data_source_composable as dsc
-from caom2pipe.manage_composable import get_endpoint_session, make_time_tz, query_endpoint_session
+from caom2pipe.manage_composable import get_endpoint_session, make_datetime_tz, query_endpoint_session
 
 
 __all__ = ['CSADataSource']
@@ -206,7 +206,7 @@ class CSADataSource(dsc.DataSource):
             f_name = href.get('href')
             if f_name.endswith('.fits') or f_name.endswith('.fits.gz'):
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str, self.timezone)
+                dt = make_datetime_tz(dt_str, self.timezone)
                 if dt >= self._start_time:
                     temp = f'{root_url}/{f_name}'
                     self._logger.debug(f'Adding file: {temp}')
@@ -228,7 +228,7 @@ class CSADataSource(dsc.DataSource):
                 continue
             if y == 'NESS' or int(y) >= 2017:
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str, self.timezone)
+                dt = make_datetime_tz(dt_str, self.timezone)
                 if dt >= self._start_time:
                     temp = f'{root_url}{y}'
                     self._logger.debug(f'Adding Top Level: {temp}')
@@ -250,7 +250,7 @@ class CSADataSource(dsc.DataSource):
                 continue
             if 1 <= int_d <= 366:
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str, self.timezone)
+                dt = make_datetime_tz(dt_str, self.timezone)
                 if dt >= self._start_time:
                     temp = f'{root_url}/{d}'
                     self._logger.debug(f'Adding Day: {temp}')

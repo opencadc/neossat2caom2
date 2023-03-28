@@ -70,7 +70,8 @@
 import os
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
+from dateutil import tz
 from mock import patch, Mock, PropertyMock
 
 from caom2 import SimpleObservation
@@ -84,8 +85,8 @@ from neossat2caom2.storage_name import NEOSSatName
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
 STATE_FILE = os.path.join(TEST_DATA_DIR, 'state.yml')
-START_TIME = datetime.utcnow().replace(tzinfo=timezone.utc)
-TEST_START_TIME = (START_TIME - timedelta(days=2)).isoformat()
+START_TIME = datetime.utcnow().replace(tzinfo=tz.UTC)
+TEST_START_TIME = START_TIME - timedelta(days=2)
 TEST_DT_1 = (START_TIME - timedelta(days=1))
 TEST_DT_2 = (START_TIME - timedelta(hours=12))
 

@@ -232,7 +232,7 @@ class NEOSSatMapping(TelescopeMapping):
 
     def get_time_function_val(self, ext):
         time_string = self._headers[ext].get('DATE-OBS')
-        return ac.get_datetime(time_string)
+        return ac.get_datetime_mjd(time_string)
 
     def _get_energy(self, ext):
         # DB 24-09-19

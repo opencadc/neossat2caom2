@@ -70,7 +70,7 @@
 from datetime import datetime, timezone
 from os.path import basename, dirname, join, realpath
 
-from caom2pipe.manage_composable import Config, ExecutionReporter, make_time_tz, State
+from caom2pipe.manage_composable import Config, ExecutionReporter, make_datetime_tz, State
 from neossat2caom2.composable import NEOS_BOOKMARK
 from neossat2caom2.data_source import CSADataSource
 from unittest.mock import Mock, patch
@@ -95,7 +95,7 @@ def test_parse_functions():
     test_config.state_fqn = join(TEST_DATA_DIR, 'parse_test_state.yml')
     test_subject = CSADataSource(test_config)
     assert test_subject is not None, 'ctor failure'
-    test_subject._start_time = make_time_tz(TEST_START_TIME_STR, test_time_zone)
+    test_subject._start_time = make_datetime_tz(TEST_START_TIME_STR, test_time_zone)
 
     with open(TOP_PAGE) as f:
         test_content = f.read()
@@ -134,7 +134,7 @@ def test_incremental_source(query_endpoint_mock, test_config, tmpdir):
     test_config.write_to_file(test_config)
     State.write_bookmark(test_config.state_fqn, NEOS_BOOKMARK, TEST_START_TIME_STR)
 
-    test_start_time = make_time_tz(TEST_START_TIME_STR, test_time_zone)
+    test_start_time = make_datetime_tz(TEST_START_TIME_STR, test_time_zone)
     test_subject = CSADataSource(test_config, test_start_time)
     assert test_subject is not None, 'ctor failure'
     test_reporter = ExecutionReporter(test_config, observable=Mock(), application='DEFAULT')
