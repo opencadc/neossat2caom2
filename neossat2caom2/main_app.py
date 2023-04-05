@@ -78,10 +78,7 @@ from caom2pipe.caom_composable import TelescopeMapping
 from caom2pipe import manage_composable as mc
 
 
-__all__ = ['APPLICATION', 'NEOSSatMapping']
-
-
-APPLICATION = 'neossat2caom2'
+__all__ = ['NEOSSatMapping']
 
 
 class NEOSSatMapping(TelescopeMapping):
@@ -269,13 +266,13 @@ class NEOSSatMapping(TelescopeMapping):
             ra, dec = ac.build_ra_dec_as_deg(ra, dec)
         return ra, dec
 
-    def accumulate_blueprint(self, bp, applicaton=None):
+    def accumulate_blueprint(self, bp):
         """Configure the telescope-specific ObsBlueprint at the CAOM model Observation level.
 
         Guidance for construction is available from this doc:
         https://docs.google.com/document/d/1Z84x9t2iCK72j3-u6LSejYiDi58097oP4PY1up0axjI/edit#
         """
-        super().accumulate_blueprint(bp, APPLICATION)
+        super().accumulate_blueprint(bp)
 
         bp.set('Observation.intent', 'get_obs_intent()')
         # DB 24-09-19
