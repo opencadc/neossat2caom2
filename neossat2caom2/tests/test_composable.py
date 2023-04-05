@@ -67,11 +67,12 @@
 # ***********************************************************************
 #
 
+import logging
 import os
+import traceback
 
 from collections import defaultdict
 from datetime import datetime, timedelta
-from dateutil import tz
 from mock import patch, Mock, PropertyMock
 
 from caom2 import SimpleObservation
@@ -79,13 +80,12 @@ from caom2pipe import execute_composable as ec
 from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 from neossat2caom2 import composable
-from neossat2caom2.main_app import APPLICATION
 from neossat2caom2.storage_name import NEOSSatName
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
 STATE_FILE = os.path.join(TEST_DATA_DIR, 'state.yml')
-START_TIME = datetime.utcnow().replace(tzinfo=tz.UTC)
+START_TIME = datetime.utcnow()
 TEST_START_TIME = START_TIME - timedelta(days=2)
 TEST_DT_1 = (START_TIME - timedelta(days=1))
 TEST_DT_2 = (START_TIME - timedelta(hours=12))
@@ -112,8 +112,8 @@ for f_name in TEST_FILE_LIST[8:]:
 
 
 @patch('neossat2caom2.data_source.CSADataSource.todo_list', new_callable=PropertyMock(return_value=x))
-@patch('neossat2caom2.data_source.CSADataSource.max_time', new_callable=PropertyMock(return_value=TEST_DT_2))
-@patch('neossat2caom2.data_source.CSADataSource.initialize_todo')
+@patch('neossat2caom2.data_source.CSADataSource.end_dt', new_callable=PropertyMock(return_value=TEST_DT_2))
+@patch('neossat2caom2.data_source.CSADataSource.initialize_end_dt')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
 def test_run_state(run_mock, access_mock, initialize_mock, max_mock, list_mock, test_config, tmpdir):
@@ -125,7 +125,7 @@ def test_run_state(run_mock, access_mock, initialize_mock, max_mock, list_mock, 
     test_config.interval = 200
     test_config.write_to_file(test_config)
 
-    mc.State.write_bookmark(test_config.state_fqn, composable.NEOS_BOOKMARK, TEST_START_TIME)
+    mc.State.write_bookmark(test_config.state_fqn, test_config.bookmark, TEST_START_TIME)
     with open(test_config.proxy_fqn, 'w') as f:
         f.write('test content')
 
@@ -149,6 +149,45 @@ def test_run_state(run_mock, access_mock, initialize_mock, max_mock, list_mock, 
         'NEOS_SCI'
     ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
     assert run_mock.call_count == 10, 'wrong call count'
+    test_state_end = mc.State(test_config.state_fqn, test_config.time_zone)
+    test_end_bookmark = test_state_end.get_bookmark(test_config.bookmark)
+    assert TEST_DT_2 == test_end_bookmark, f'wrong end time max {TEST_DT_2} end {test_end_bookmark}'
+
+
+@patch('neossat2caom2.data_source.CSADataSource.todo_list', new_callable=PropertyMock(return_value=defaultdict(list)))
+@patch('neossat2caom2.data_source.CSADataSource.initialize_end_dt')
+@patch('cadcutils.net.ws.WsCapabilities.get_access_url')
+@patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
+def test_run_state_zero_records(run_mock, access_mock, initialize_mock, list_mock, test_config, tmpdir):
+    # this tests end conditions when there is no work at the data source (i.e. CSA http site),
+    # in this case, the value in the state.yml file should not change, since the value in
+    # the state.yml file is the timestamp of the last record processed
+    access_mock.return_value = 'https://localhost'
+    test_config.change_working_directory(tmpdir)
+    test_config.task_types = [mc.TaskType.STORE, mc.TaskType.INGEST]
+    test_config.proxy_file_name = 'textproxy.pem'
+    test_config.interval = 200
+    test_config.logging_level = 'DEBUG'
+    test_config.write_to_file(test_config)
+
+    mc.State.write_bookmark(test_config.state_fqn, test_config.bookmark, TEST_START_TIME)
+    with open(test_config.proxy_fqn, 'w') as f:
+        f.write('test content')
+
+    run_mock.return_value = 0
+    try:
+        test_result = composable._run_state()
+    except Exception as e:
+        logging.error(traceback.format_exc())
+        assert False, f'unexpected exception {e}'
+    assert test_result == 0, 'expected successful test result'
+    assert initialize_mock.called, 'initialize should be called'
+    # called for every invocation of get_time_box_work
+    assert initialize_mock.call_count == 1, 'wrong initialize call count'
+    assert not run_mock.called, 'no records, should not be called'
+    test_state_end = mc.State(test_config.state_fqn, test_config.time_zone)
+    test_end_bookmark = test_state_end.get_bookmark(test_config.bookmark)
+    assert test_end_bookmark == TEST_START_TIME, f'wrong end time max {TEST_START_TIME} end {test_end_bookmark}'
 
 
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
@@ -208,10 +247,34 @@ def test_store():
     ), 'wrong get args'
 
 
+def test_scrape_modify_compressed(test_config, tmp_path):
+    # test the scrape + modify test case, with compressed files
+    # will also execute preview generation
+    test_config.change_working_directory(tmp_path.as_posix())
+    test_config.logging_level = 'INFO'
+    test_config.use_local_files = True
+    test_config.log_to_file = True
+    test_config.task_types = [mc.TaskType.SCRAPE, mc.TaskType.MODIFY]
+    test_config.data_sources = [f'{TEST_DATA_DIR}/../../../int_test']
+    test_config.data_source_extensions = ['.fits.gz']
+    orig_dir = os.getcwd()
+    try:
+        os.chdir(tmp_path)
+        test_config.write_to_file(test_config)
+        test_result = composable._run()
+        assert test_result == 0, 'expect success'
+        test_summary = mc.ExecutionSummary.read_report_file(test_config.report_fqn)
+        assert test_summary.entries == 2, 'wrong entries count'
+        assert test_summary.success == 2, 'wrong success count'
+    except Exception as e:
+        os.chdir(orig_dir)
+        assert False, f'expect no exceptions {e}'
+
+
 def _check_execution(run_mock):
     assert run_mock.called, 'should have been called'
     args, kwargs = run_mock.call_args
-    assert args[3] == APPLICATION, 'wrong command'
+    assert args[3] == f'neossat2caom2', 'wrong command'
     test_storage = args[2]
     assert isinstance(test_storage, NEOSSatName), type(test_storage)
     assert test_storage.file_name.startswith(
