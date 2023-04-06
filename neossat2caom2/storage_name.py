@@ -78,33 +78,19 @@ class NEOSSatName(StorageName):
 
     def __init__(self, file_name, source_names):
         super().__init__(file_name=file_name, source_names=source_names)
-        self._logger.debug(self)
-
-    def __str__(self):
-        return f'\n' \
-               f'      obs id: {self._obs_id}\n' \
-               f'   file name: {self._file_name}\n' \
-               f'source names: {self.source_names}\n'
 
     def is_valid(self):
         return True
+
     @property
     def prev(self):
         """The preview file name for the file."""
-        return '{}_{}_prev.png'.format(self.obs_id, self._product_id)
+        return f'{self._obs_id}_{self._product_id}_prev.png'
 
     @property
     def thumb(self):
         """The thumbnail file name for the file."""
-        return '{}_{}_prev_256.png'.format(self.obs_id, self._product_id)
-
-    @staticmethod
-    def remove_extensions(value):
-        return (
-            value.replace('.fits', '')
-            .replace('.header', '')
-            .replace('.gz', '')
-        )
+        return f'{self._obs_id}_{self._product_id}_prev_256.png'
 
     def set_file_id(self):
         self._file_id = NEOSSatName.remove_extensions(self._file_name)

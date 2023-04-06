@@ -111,6 +111,7 @@ LOOKUP = {
     '2015347015200': ['NEOS_SCI_2015347015200_clean'],
     # PI Name
     '2020255152013': ['NEOS_SCI_2020255152013_clean'],
+    '2022255054715': ['NEOS_SCI_2022255054715_cor', 'NEOS_SCI_2022255054715_cord'],
 }
 
 
@@ -121,7 +122,6 @@ def pytest_generate_tests(metafunc):
 @patch('caom2utils.data_util.get_local_headers_from_fits')
 def test_main_app(header_mock, test_name, test_config):
     expected_fqn = f'{TEST_DATA_DIR}/{test_name}.expected.xml'
-    expected = mc.read_obs_from_file(expected_fqn)
     actual_fqn = expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
         os.unlink(actual_fqn)
@@ -146,7 +146,11 @@ def test_main_app(header_mock, test_name, test_config):
         observation = fits2caom2_augmentation.visit(observation, **kwargs)
 
     try:
-        compare_result = get_differences(expected, observation)
+        if os.path.exists(expected_fqn):
+            expected = mc.read_obs_from_file(expected_fqn)
+            compare_result = get_differences(expected, observation)
+        else:
+            raise FileNotFoundError(expected_fqn)
     except Exception as e:
         mc.write_obs_to_file(observation, actual_fqn)
         raise e

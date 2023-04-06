@@ -86,8 +86,6 @@ from neossat2caom2 import fits2caom2_augmentation, preview_augmentation
 from neossat2caom2.data_source import CSADataSource
 from neossat2caom2.storage_name import NEOSSatName
 
-NEOS_BOOKMARK = 'neossat_timestamp'
-
 META_VISITORS = [fits2caom2_augmentation]
 DATA_VISITORS = [preview_augmentation]
 
@@ -125,28 +123,25 @@ def run():
 
 
 def _run_state():
-    """Uses a state file with a timestamp to control which files will be
-    retrieved from the CSA ftp host.
+    """Uses a state file with a timestamp to control which files will be retrieved from the CSA https host.
 
-    Ingestion is based on fully-qualified file names from the CSA ftp host,
-    because those are difficult to reproduce otherwise.
+    Ingestion is based on fully-qualified file names from the CSA https host.
     """
     builder = nbc.GuessingBuilder(NEOSSatName)
     config = mc.Config()
     config.get_executors()
-    state = mc.State(config.state_fqn)
-    start_time = state.get_bookmark(NEOS_BOOKMARK)
+    state = mc.State(config.state_fqn, config.time_zone)
+    start_time = state.get_bookmark(config.bookmark)
     incremental_source = CSADataSource(config, start_time)
-    # set the max time
-    incremental_source.initialize_todo()
+    # set the max time to limit incremental harvesting, and to be captured in the state.yml file
+    incremental_source.initialize_end_dt()
     transferrer = HttpTransfer()
     return rc.run_by_state(
         config=config,
         name_builder=builder,
-        bookmark_name=NEOS_BOOKMARK,
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
-        end_time=incremental_source.max_time,
+        end_time=incremental_source.end_dt,
         source=incremental_source,
         store_transfer=transferrer,
     )

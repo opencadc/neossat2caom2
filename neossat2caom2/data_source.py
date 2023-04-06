@@ -69,10 +69,11 @@
 
 from bs4 import BeautifulSoup
 from collections import defaultdict, deque
-from datetime import datetime, timezone
+from datetime import datetime
+from dateutil import tz
 
 from caom2pipe import data_source_composable as dsc
-from caom2pipe.manage_composable import get_endpoint_session, make_time_tz, query_endpoint_session
+from caom2pipe.manage_composable import get_endpoint_session, make_datetime, query_endpoint_session
 
 
 __all__ = ['CSADataSource']
@@ -84,29 +85,25 @@ class CSADataSource(dsc.DataSource):
     all-the-files-from-a-day page.
     """
 
-    def __init__(
-        self, config, start_time=datetime(year=2018, month=10, day=1, hour=0, minute=0, second=0, tzinfo=timezone.utc)
-    ):
+    # time_zone = tz.gettz('Canada/Eastern')
+    default_start_time = datetime(year=2018, month=10, day=1, hour=0, minute=0, second=0)
+
+    def __init__(self, config, start_time=None):
         """
         The default time is prior to the timestamp on the earliest file at the data source.
-        The earliest dated file I could find on the original FTP site was 10-18-18
+        The earliest dated file I could find on the original FTP site was 10-18-18.
+        Use the default datetime to scrape the whole collection when doing validation.
 
         :param config: Config
-        :param start_time: datetime
+        :param start_time: naive datetime
         """
-        super().__init__(config)
+        super().__init__(config, start_time)
         self._data_sources = config.data_sources
         self._session = get_endpoint_session()
-        self._start_time = start_time
-        self._max_time = start_time
+        self._start_dt = CSADataSource.default_start_time if start_time is None else start_time
         # self._todo_list - the list of all work queried from the http data source, self._work is the time-boxed list
         # constructed using that content
         self._todo_list = defaultdict(list)
-
-    @property
-    def max_time(self):
-        """:return datetime.timestamp"""
-        return self._max_time
 
     @property
     def todo_list(self):
@@ -117,12 +114,12 @@ class CSADataSource(dsc.DataSource):
         """
         Time-boxing the file url list returned from the site scrape.
 
-        :param prev_exec_dt datetime start of the time chunk
-        :param exec_dt datetime end of the time chunk
+        :param prev_exec_dt naive datetime start of the time chunk
+        :param exec_dt naive datetime end of the time chunk
         :return: a list of StateRunnerMeta instances, for file names with time they were modified
         """
         self._logger.debug('Begin get_time_box_work')
-        self.initialize_todo()
+        self.initialize_end_dt()
         self._work = deque()
         for dt in sorted(self.todo_list):
             if prev_exec_dt < dt <= exec_dt:
@@ -146,7 +143,7 @@ class CSADataSource(dsc.DataSource):
         self._logger.debug('End get_work')
         return self._work
 
-    def initialize_todo(self):
+    def initialize_end_dt(self):
         """Capture the list of work, based on timestamps from the CSA NEOSSat page in self._todo_list."""
         if len(self._todo_list) > 0:
             self._logger.info('Already initialized.')
@@ -165,7 +162,7 @@ class CSADataSource(dsc.DataSource):
 
                     for year_list in years.values():
                         for year_url in year_list:
-                            self._logger.debug(f'Checking year {year_url} on date {self._start_time}')
+                            self._logger.debug(f'Checking year {year_url} on date {self._start_dt}')
                             response = query_endpoint_session(year_url, self._session)
                             if response is None:
                                 self._logger.warning(f'Could not query year {year_url}')
@@ -177,13 +174,13 @@ class CSADataSource(dsc.DataSource):
                                 # get the list of files
                                 for day_list in days.values():
                                     for day_url in day_list:
-                                        self._logger.debug(f'Checking day {day_url} with date {self._start_time}')
+                                        self._logger.debug(f'Checking day {day_url} with date {self._start_dt}')
                                         response = query_endpoint_session(day_url, self._session)
                                         if response is None:
                                             self._logger.warning(f'Could not query {day_url}')
                                         else:
                                             files = self._parse_day_page(day_url, response.text)
-                                            self._logger.info(f'Found {len(files)} files on {day_url}.')
+                                            self._logger.info(f'Found {len(files)} day(s) with candidate files on {day_url}.')
                                             response.close()
                                             self._consolidate_lists_of_files_by_dt(files)
             finally:
@@ -193,7 +190,7 @@ class CSADataSource(dsc.DataSource):
     def _consolidate_lists_of_files_by_dt(self, files):
         for dt in files:
             self._todo_list[dt] += files[dt]
-            self._max_time = max(self._max_time, dt)
+            self._end_dt = max(self._end_dt, dt)
 
     def _parse_day_page(self, root_url, html_string):
         """
@@ -206,8 +203,8 @@ class CSADataSource(dsc.DataSource):
             f_name = href.get('href')
             if f_name.endswith('.fits') or f_name.endswith('.fits.gz'):
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str, self.timezone)
-                if dt >= self._start_time:
+                dt = make_datetime(dt_str)
+                if dt >= self._start_dt:
                     temp = f'{root_url}/{f_name}'
                     self._logger.debug(f'Adding file: {temp}')
                     result[dt].append(temp)
@@ -227,12 +224,25 @@ class CSADataSource(dsc.DataSource):
             except ValueError as e:
                 continue
             if y == 'NESS' or int(y) >= 2017:
+                # There's no timestamp check for the top-level directories when harvesting incrementally because the
+                # lower pages have products retroactively added that don't change the timestamps on the YEAR page.
+                #
+                # VA 23-03-23
+                # We are finally starting to push some of our “advanced” image products to the CSA Open Data.  These
+                # are using new improved “cleaning” software, and the outputs are:
+                # ·         *_cor.fits.gz   (Cropped, Overscan-corrected)
+                # ·         *_cord.fits.gz  (Cropped, Overscan-corrected and dark-corrected)
+                # For now, there is a set of data from day 2022-255 to 2022-272 (Didymos & more), but we will keep
+                # populating these slowly, including the back-archive.
+                #
+                # Could you start picking [these files] up, so that all CADC users could eventually benefit from the
+                # better-quality products?  Eventually, these will replace the “_clean.fits” products, but for now,
+                # the “_cor.fits” and “_clean.fits” will both exist for some images.
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str, self.timezone)
-                if dt >= self._start_time:
-                    temp = f'{root_url}{y}'
-                    self._logger.debug(f'Adding Top Level: {temp}')
-                    result[dt].append(temp)
+                dt = make_datetime(dt_str)
+                temp = f'{root_url}{y}'
+                self._logger.debug(f'Adding Top Level: {temp}')
+                result[dt].append(temp)
         return result
 
     def _parse_year_page(self, root_url, html_string):
@@ -250,8 +260,8 @@ class CSADataSource(dsc.DataSource):
                 continue
             if 1 <= int_d <= 366:
                 dt_str = href.next_element.next_element.string.replace('-', '').strip()
-                dt = make_time_tz(dt_str, self.timezone)
-                if dt >= self._start_time:
+                dt = make_datetime(dt_str)
+                if dt >= self._start_dt:
                     temp = f'{root_url}/{d}'
                     self._logger.debug(f'Adding Day: {temp}')
                     result[dt].append(temp)
