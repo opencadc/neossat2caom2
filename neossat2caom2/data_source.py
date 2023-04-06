@@ -180,7 +180,7 @@ class CSADataSource(dsc.DataSource):
                                             self._logger.warning(f'Could not query {day_url}')
                                         else:
                                             files = self._parse_day_page(day_url, response.text)
-                                            self._logger.info(f'Found {len(files)} files on {day_url}.')
+                                            self._logger.info(f'Found {len(files)} day(s) with candidate files on {day_url}.')
                                             response.close()
                                             self._consolidate_lists_of_files_by_dt(files)
             finally:
