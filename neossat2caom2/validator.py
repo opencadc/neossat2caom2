@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -72,9 +71,10 @@ import traceback
 
 from os.path import join
 
-from caom2pipe.manage_composable import StorageName, write_as_yaml
+from caom2pipe.html_data_source import HttpDataSource
+from caom2pipe.manage_composable import get_endpoint_session, StorageName, write_as_yaml
 from caom2pipe.validator_composable import Validator
-from neossat2caom2.data_source import CSADataSource
+from neossat2caom2.data_source import NeossatPagesTemplate
 
 
 __all__ = ['NeossatValidator', 'validate']
@@ -120,23 +120,32 @@ def list_for_validate(config):
         https site, and values are the timestamps for the files at the CSA site.
     """
     # want the whole list for validation, so pick the earliest timestamp, which is also the default timestamp
-    data_source = CSADataSource(config)
-    temp = data_source.get_work()
+    pages_template = NeossatPagesTemplate(config)
+    session = get_endpoint_session()
+    data_sources = []
+    for start_key in config.data_sources:
+        incremental_source = HttpDataSource(config, start_key, pages_template, session)
+        incremental_source.start_dt = NEOSSAT_START_DATE
+        data_sources.append(incremental_source)
+    result = {}
+    for data_source in data_sources:
+        temp = data_source.get_work()
+        result = dict(result, **temp)
 
     list_fqn = join(config.working_directory, NEOSSAT_SOURCE_LIST)
-    write_as_yaml(temp, list_fqn)
+    write_as_yaml(result, list_fqn)
 
     # remove the fully-qualified path names from the validator list
     # while creating a dictionary where the file name is the key, and the
     # fully-qualified file name at the HTTPS site is the value
-    validator_list = {ii.split('/')[-1]: ii for ii in temp}
-    result = {'url': [], 'f_name': [], 'dt': []}
+    validator_list = {ii.split('/')[-1]: ii for ii in result}
+    validated = {'url': [], 'f_name': [], 'dt': []}
     for dt, file_list in data_source._todo_list.items():
         for f in file_list:
-            result['url'].append(f)
-            result['f_name'].append(f.split('/')[-1])
-            result['dt'].append(dt)
-    return result, validator_list
+            validated['url'].append(f)
+            validated['f_name'].append(f.split('/')[-1])
+            validated['dt'].append(dt)
+    return validated, validator_list
 
 
 def validate():

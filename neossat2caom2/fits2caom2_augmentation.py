@@ -76,7 +76,9 @@ class NEOSSatFits2caom2Visitor(Fits2caom2Visitor):
         super().__init__(observation, **kwargs)
 
     def _get_mapping(self, headers):
-        return NEOSSatMapping(self._storage_name, headers, self._clients)
+        return NEOSSatMapping(
+            self._storage_name, headers, self._clients, self._observable, self._observation, self._config
+        )
 
 
 def visit(observation, **kwargs):

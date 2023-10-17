@@ -139,6 +139,7 @@ def test_main_app(header_mock, test_name, test_config):
         kwargs = {
             'storage_name': storage_name,
             'metadata_reader': metadata_reader,
+            'config': test_config,
         }
         in_fqn = expected_fqn.replace('.expected', '.in')
         if os.path.exists(in_fqn):

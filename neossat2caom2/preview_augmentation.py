@@ -130,11 +130,11 @@ class NeossatPreview(mc.PreviewVisitor):
                 ystart = dsl[2] - 1
                 yend = dsl[3]
 
-        plt.imshow(
-            image_data[ystart:yend, xstart:xend],
-            cmap='gray_r',
-            norm=colors.LogNorm(),
-        )
+        usable_data = image_data[ystart:yend, xstart:xend]
+        if usable_data.min() == usable_data.max():
+            plt.imshow(usable_data, cmap='gray_r')
+        else:
+            plt.imshow(usable_data, cmap='gray_r', norm=colors.LogNorm())
         plt.axis('off')
         if os.access(fqn, 0):
             os.remove(fqn)

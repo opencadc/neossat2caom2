@@ -70,14 +70,12 @@
 import os
 
 from caom2pipe import manage_composable as mc
-from caom2pipe.validator_composable import VALIDATE_OUTPUT
-
 from neossat2caom2 import validator
 
 from mock import patch, Mock
 
 
-@patch('neossat2caom2.data_source.CSADataSource.get_work')
+@patch('neossat2caom2.validator.HttpDataSource.get_work')
 @patch('cadcutils.net.BaseWsClient.post')
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 def test_validator(caps_mock, post_mock, get_work_mock, test_config, tmpdir):

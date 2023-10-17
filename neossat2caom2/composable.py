@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -78,12 +77,13 @@ import logging
 import sys
 import traceback
 
-from caom2pipe import manage_composable as mc
+from caom2pipe.html_data_source import HttpDataSource
+from caom2pipe.manage_composable import Config, get_endpoint_session
 from caom2pipe import name_builder_composable as nbc
 from caom2pipe import run_composable as rc
 from caom2pipe.transfer_composable import HttpTransfer
 from neossat2caom2 import fits2caom2_augmentation, preview_augmentation
-from neossat2caom2.data_source import CSADataSource
+from neossat2caom2.data_source import NeossatPagesTemplate
 from neossat2caom2.storage_name import NEOSSatName
 
 META_VISITORS = [fits2caom2_augmentation]
@@ -98,7 +98,7 @@ def _run():
         is used by airflow for task instance management and reporting.
     """
     builder = nbc.GuessingBuilder(NEOSSatName)
-    config = mc.Config()
+    config = Config()
     config.get_executors()
     transferrer = HttpTransfer()
     return rc.run_by_todo(
@@ -128,21 +128,21 @@ def _run_state():
     Ingestion is based on fully-qualified file names from the CSA https host.
     """
     builder = nbc.GuessingBuilder(NEOSSatName)
-    config = mc.Config()
+    config = Config()
     config.get_executors()
-    state = mc.State(config.state_fqn, config.time_zone)
-    start_time = state.get_bookmark(config.bookmark)
-    incremental_source = CSADataSource(config, start_time)
-    # set the max time to limit incremental harvesting, and to be captured in the state.yml file
-    incremental_source.initialize_end_dt()
+    pages_template = NeossatPagesTemplate(config)
+    session = get_endpoint_session()
+    data_sources = []
+    for start_key in config.data_sources:
+        incremental_source = HttpDataSource(config, start_key, pages_template, session)
+        data_sources.append(incremental_source)
     transferrer = HttpTransfer()
     return rc.run_by_state(
         config=config,
         name_builder=builder,
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
-        end_time=incremental_source.end_dt,
-        source=incremental_source,
+        sources=data_sources,
         store_transfer=transferrer,
     )
 

@@ -67,7 +67,6 @@
 # ***********************************************************************
 #
 
-from dateutil.tz import gettz
 from caom2pipe.manage_composable import Config, StorageName
 import pytest
 
@@ -84,7 +83,7 @@ def test_config():
     config.scheme = SCHEME
     config.data_sources = ['https://localhost:8888/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/']
     config.logging_level = 'INFO'
-    config.time_zone = gettz('Canada/Eastern')
+    config.time_zone = 'Canada/Eastern'
     StorageName.collection = config.collection
     StorageName.preview_scheme = config.preview_scheme
     StorageName.scheme = config.scheme
