@@ -83,8 +83,8 @@ __all__ = ['NEOSSatMapping']
 
 class NEOSSatMapping(TelescopeMapping):
 
-    def __init__(self, storage_name, headers, clients):
-        super().__init__(storage_name, headers, clients)
+    def __init__(self, storage_name, headers, clients, observable, observation, config):
+        super().__init__(storage_name, headers, clients, observable, observation, config)
 
     def get_artifact_product_type(self, ext):
         result = ProductType.SCIENCE
@@ -329,10 +329,10 @@ class NEOSSatMapping(TelescopeMapping):
 
         self._logger.debug('Done accumulate_bp.')
 
-    def update(self, observation, file_info):
+    def update(self, file_info):
         """Called to fill multiple CAOM model elements and/or attributes. """
         self._logger.debug('Begin update.')
-        for plane in observation.planes.values():
+        for plane in self._observation.planes.values():
             if plane.product_id != self._storage_name.product_id:
                 continue
             for artifact in plane.artifacts.values():
@@ -357,12 +357,12 @@ class NEOSSatMapping(TelescopeMapping):
                         for chunk in part.chunks:
                             chunk.product_type = artifact.product_type
                             self._build_chunk_energy(chunk)
-                            self._build_chunk_position(chunk, observation.observation_id)
+                            self._build_chunk_position(chunk)
                             chunk.time_axis = None
                 for part in temp_parts.values():
                     artifact.parts.add(part)
         self._logger.debug('Done update.')
-        return observation
+        return self._observation
 
     def _build_chunk_energy(self, chunk):
         # DB 18-09-19
@@ -400,7 +400,7 @@ class NEOSSatMapping(TelescopeMapping):
             )
             chunk.energy = energy
 
-    def _build_chunk_position(self, chunk, obs_id):
+    def _build_chunk_position(self, chunk):
         # DB 18-08-19
         # Ignoring rotation for now:  Use CRVAL1 = RA from header, CRVAL2 = DEC
         # from header.  NAXIS1/NAXIS2 values gives number of pixels along RA/DEC
@@ -413,7 +413,7 @@ class NEOSSatMapping(TelescopeMapping):
         ra = self.get_ra(0)
         dec = self.get_dec(0)
         if ra is None or dec is None:
-            self._logger.warning(f'No position information for {obs_id}')
+            self._logger.warning(f'No position information for {self._observation.observation_id}')
             chunk.naxis = None
         else:
             header['CTYPE1'] = 'RA---TAN'
@@ -425,7 +425,7 @@ class NEOSSatMapping(TelescopeMapping):
             header['CRPIX1'] = self.get_position_axis_function_naxis1(0)
             header['CRPIX2'] = self.get_position_axis_function_naxis2(0)
 
-            wcs_parser = FitsWcsParser(header, obs_id, 0)
+            wcs_parser = FitsWcsParser(header, self._observation.observation_id, 0)
             if chunk is None:
                 chunk = Chunk()
             wcs_parser.augment_position(chunk)

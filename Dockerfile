@@ -8,8 +8,7 @@ RUN apt-get update --no-install-recommends && \
 
 WORKDIR /usr/src/app
 
-ARG OPENCADC_BRANCH=master
-ARG OPENCADC_MAIN_BRANCH=main
+ARG OPENCADC_BRANCH=main
 ARG OPENCADC_REPO=opencadc
 
 RUN git clone https://github.com/${OPENCADC_REPO}/caom2tools.git && \
@@ -18,9 +17,9 @@ RUN git clone https://github.com/${OPENCADC_REPO}/caom2tools.git && \
     pip install ./caom2utils && \
     cd ..
 
-RUN pip install git+https://github.com/${OPENCADC_REPO}/caom2pipe@${OPENCADC_MAIN_BRANCH}#egg=caom2pipe
+RUN pip install git+https://github.com/${OPENCADC_REPO}/caom2pipe@${OPENCADC_BRANCH}#egg=caom2pipe
   
-RUN pip install git+https://github.com/${OPENCADC_REPO}/neossat2caom2@${OPENCADC_MAIN_BRANCH}#egg=neossat2caom2
+RUN pip install git+https://github.com/${OPENCADC_REPO}/neossat2caom2@${OPENCADC_BRANCH}#egg=neossat2caom2
 
 FROM python:${OPENCADC_PYTHON_VERSION}-slim
 WORKDIR /usr/src/app

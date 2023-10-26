@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -130,3 +129,30 @@ def test_preview_augmentation(test_config, tmpdir):
                 test_obs.planes[product_id].artifacts[thumba].content_checksum
                 == ChecksumURI('md5:e9895dde4bc52cc403615c777c13d740')
             ), 'thumb checksum failure'
+
+
+def test_half_black(test_config, tmpdir):
+    test_config.data_sources = ['/test_files']
+    test_config.change_working_directory(tmpdir)
+    test_builder = nbc.GuessingBuilder(NEOSSatName)
+    test_file_names = ['NEOS_SCI_2023105181520.fits']
+
+    for f_name in test_file_names:
+        test_obs = mc.read_obs_from_file(
+            f'{test_main_app.TEST_DATA_DIR}/{f_name.replace(".fits", "").replace("NEOS_SCI_", "")}.expected.xml'
+        )
+        test_fqn = f'/test_files/{f_name}'
+        assert os.path.exists(test_fqn), f'missing {test_fqn}'
+        test_storage_name = test_builder.build(test_fqn)
+        if os.path.exists(f'/test_files/{test_storage_name.prev}'):
+            os.unlink(f'/test_files/{test_storage_name.prev}')
+        if os.path.exists(f'/test_files/{test_storage_name.thumb}'):
+            os.unlink(f'/test_files/{test_storage_name.thumb}')
+        kwargs = {
+            'working_directory': '/test_files',
+            'storage_name': test_storage_name,
+        }
+        test_obs = preview_augmentation.visit(test_obs, **kwargs)
+        assert test_obs is not None, 'expect a result'
+        assert os.path.exists(f'/test_files/{test_storage_name.prev}')
+        assert os.path.exists(f'/test_files/{test_storage_name.thumb}')
