@@ -66,9 +66,8 @@
 # ***********************************************************************
 #
 
-import logging
 import os
-import traceback
+import re
 
 from datetime import datetime, timedelta
 from mock import patch, Mock
@@ -113,7 +112,7 @@ for f_name in TEST_FILE_LIST[8:]:
 @patch('cadcutils.net.ws.WsCapabilities.get_access_url')
 @patch('caom2pipe.execute_composable.OrganizeExecutes.do_one')
 def test_run_state(run_mock, access_mock, data_source_mock, test_config, tmpdir):
-    
+
     class MockDS(HttpDataSource):
 
         def __init__(self, config, start_key, html_filters, session):
@@ -134,26 +133,20 @@ def test_run_state(run_mock, access_mock, data_source_mock, test_config, tmpdir)
     orig_dir = os.getcwd()
     try:
         os.chdir(tmpdir)
- 
+
         test_config.write_to_file(test_config)
         mc.State.write_bookmark(test_config.state_fqn, test_config.data_sources[0], TEST_START_TIME)
         with open(test_config.proxy_fqn, 'w') as f:
             f.write('test content')
 
         run_mock.return_value = 0
-        try:
-            test_result = composable._run_state()
-        except Exception as e:
-            logging.error(traceback.format_exc())
-            assert False, f'unexpected exception {e}'
+        test_result = composable._run_state()
         assert test_result == 0, 'expected successful test result'
         assert run_mock.called, 'should be called'
         args, kwargs = run_mock.call_args
         test_storage = args[0]
         assert isinstance(test_storage, NEOSSatName), type(test_storage)
-        assert test_storage.file_name.startswith(
-            'NEOS_SCI'
-        ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
+        assert re.match('^NEOS_SCI.*\.fits$', test_storage.file_name) is not None
         assert run_mock.call_count == 10, 'wrong call count'
         test_state_end = mc.State(test_config.state_fqn, test_config.time_zone)
         test_end_bookmark = test_state_end.get_bookmark(test_config.data_sources[0])
@@ -200,11 +193,7 @@ def test_run_state_zero_records(run_mock, access_mock, data_source_mock, test_co
             f.write('test content')
 
         run_mock.return_value = 0
-        try:
-            test_result = composable._run_state()
-        except Exception as e:
-            logging.error(traceback.format_exc())
-            assert False, f'unexpected exception {e}'
+        test_result = composable._run_state()
         assert test_result == 0, 'expected successful test result'
         assert mock_called, 'initialize should be called'
         assert not run_mock.called, 'no records, should not be called'
@@ -231,10 +220,7 @@ def test_run_by_file(do_one_mock, clients_mock, access_mock):
     os.getcwd = Mock(return_value=TEST_DATA_DIR)
     try:
         _write_todo()
-        try:
-            test_result = composable._run()
-        except Exception as e:
-            assert False, f'unexpected exception {e}'
+        test_result = composable._run()
         assert test_result == 0, 'wrong result'
         # ClientVisit executor only with the test configuration
         assert do_one_mock.called, 'expect do_one call'
@@ -286,18 +272,6 @@ def test_scrape_modify_compressed(test_config, tmp_path):
     except Exception as e:
         os.chdir(orig_dir)
         assert False, f'expect no exceptions {e}'
-
-
-def _check_execution(run_mock):
-    assert run_mock.called, 'should have been called'
-    args, kwargs = run_mock.call_args
-    assert args[3] == f'neossat2caom2', 'wrong command'
-    test_storage = args[2]
-    assert isinstance(test_storage, NEOSSatName), type(test_storage)
-    assert test_storage.file_name.startswith(
-        'NEOS_SCI'
-    ) and test_storage.file_name.endswith('.fits'), test_storage.file_name
-    assert run_mock.call_count == 10, 'wrong call count'
 
 
 def _write_todo():

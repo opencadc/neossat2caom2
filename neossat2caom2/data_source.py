@@ -79,18 +79,6 @@ def filter_by_year(href):
     """
     # There's no timestamp check for the top-level directories when harvesting incrementally because the
     # lower pages have products retroactively added that don't change the timestamps on the YEAR page.
-    #
-    # VA 23-03-23
-    # We are finally starting to push some of our “advanced” image products to the CSA Open Data.  These
-    # are using new improved “cleaning” software, and the outputs are:
-    # ·         *_cor.fits.gz   (Cropped, Overscan-corrected)
-    # ·         *_cord.fits.gz  (Cropped, Overscan-corrected and dark-corrected)
-    # For now, there is a set of data from day 2022-255 to 2022-272 (Didymos & more), but we will keep
-    # populating these slowly, including the back-archive.
-    #
-    # Could you start picking [these files] up, so that all CADC users could eventually benefit from the
-    # better-quality products?  Eventually, these will replace the “_clean.fits” products, but for now,
-    # the “_cor.fits” and “_clean.fits” will both exist for some images.
     y = href.replace('/', '')
     try:
         return y == 'NESS' or int(y) >= 2017

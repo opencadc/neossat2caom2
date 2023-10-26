@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -143,8 +142,7 @@ def test_half_black(test_config, tmpdir):
             f'{test_main_app.TEST_DATA_DIR}/{f_name.replace(".fits", "").replace("NEOS_SCI_", "")}.expected.xml'
         )
         test_fqn = f'/test_files/{f_name}'
-        if not os.path.exists(test_fqn):
-            assert False, f'missing {test_fqn}'
+        assert os.path.exists(test_fqn), f'missing {test_fqn}'
         test_storage_name = test_builder.build(test_fqn)
         if os.path.exists(f'/test_files/{test_storage_name.prev}'):
             os.unlink(f'/test_files/{test_storage_name.prev}')
@@ -154,10 +152,7 @@ def test_half_black(test_config, tmpdir):
             'working_directory': '/test_files',
             'storage_name': test_storage_name,
         }
-        try:
-            test_obs = preview_augmentation.visit(test_obs, **kwargs)
-        except Exception as e:
-            assert False, 'should generate a flat file preview'
+        test_obs = preview_augmentation.visit(test_obs, **kwargs)
         assert test_obs is not None, 'expect a result'
         assert os.path.exists(f'/test_files/{test_storage_name.prev}')
         assert os.path.exists(f'/test_files/{test_storage_name.thumb}')
