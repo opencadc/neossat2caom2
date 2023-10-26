@@ -9,7 +9,7 @@ if [[ ! -e ${PWD}/state.yml ]]; then
   if [[ "${@}" == "neossat_run_state" ]]; then
     yesterday=$(date -d yesterday "+%d-%b-%Y %H:%M")
     echo "bookmarks:
-    neossat_timestamp:
+    https://data.asc-csa.gc.ca/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/:
       last_record: $yesterday
 context:
   neossat_context:
