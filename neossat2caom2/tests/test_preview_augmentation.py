@@ -74,13 +74,12 @@ from caom2pipe import manage_composable as mc
 from caom2pipe import name_builder_composable as nbc
 
 from neossat2caom2 import preview_augmentation, NEOSSatName
-import test_main_app
 
 
-def test_preview_augmentation(test_config, tmpdir):
+def test_preview_augmentation(test_config, test_data_dir, tmpdir):
     test_config.data_sources = ['/test_files']
     test_config.change_working_directory(tmpdir)
-    test_obs_fqn = f'{test_main_app.TEST_DATA_DIR}/2019213215700.expected.xml'
+    test_obs_fqn = f'{test_data_dir}/2019213215700.expected.xml'
     test_obs = mc.read_obs_from_file(test_obs_fqn)
     assert test_obs is not None, 'expect an input'
     assert len(test_obs.planes) == 3, 'expect 3 planes'
@@ -99,7 +98,7 @@ def test_preview_augmentation(test_config, tmpdir):
     for f_name in test_file_names:
         test_fqn = f'/test_files/{f_name}'
         if not os.path.exists(test_fqn):
-            shutil.copy(f'{test_main_app.TEST_DATA_DIR}/{f_name}', test_fqn)
+            shutil.copy(f'{test_data_dir}/{f_name}', test_fqn)
         test_storage_name = test_builder.build(test_fqn)
         if os.path.exists(f'/test_files/{test_storage_name.prev}'):
             os.unlink(f'/test_files/{test_storage_name.prev}')
@@ -131,7 +130,7 @@ def test_preview_augmentation(test_config, tmpdir):
             ), 'thumb checksum failure'
 
 
-def test_half_black(test_config, tmpdir):
+def test_half_black(test_config, test_data_dir, tmpdir):
     test_config.data_sources = ['/test_files']
     test_config.change_working_directory(tmpdir)
     test_builder = nbc.GuessingBuilder(NEOSSatName)
@@ -139,7 +138,7 @@ def test_half_black(test_config, tmpdir):
 
     for f_name in test_file_names:
         test_obs = mc.read_obs_from_file(
-            f'{test_main_app.TEST_DATA_DIR}/{f_name.replace(".fits", "").replace("NEOS_SCI_", "")}.expected.xml'
+            f'{test_data_dir}/{f_name.replace(".fits", "").replace("NEOS_SCI_", "")}.expected.xml'
         )
         test_fqn = f'/test_files/{f_name}'
         assert os.path.exists(test_fqn), f'missing {test_fqn}'
