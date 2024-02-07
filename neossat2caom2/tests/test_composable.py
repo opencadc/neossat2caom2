@@ -82,7 +82,7 @@ from neossat2caom2.storage_name import NEOSSatName
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
-START_TIME = datetime.utcnow()
+START_TIME = datetime.now()
 TEST_START_TIME = START_TIME - timedelta(days=2)
 TEST_DT_1 = (START_TIME - timedelta(days=1))
 TEST_DT_2 = (START_TIME - timedelta(hours=12))

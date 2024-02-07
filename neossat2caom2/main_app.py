@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
@@ -72,7 +71,8 @@ import math
 from caom2 import CalibrationLevel, Axis, CoordAxis1D
 from caom2 import RefCoord, SpectralWCS, CoordRange1D, Chunk, TypedOrderedDict
 from caom2 import CoordFunction2D, Dimension2D, Coord2D, ProductType, Part
-from caom2utils.caom2blueprint import FitsWcsParser, update_artifact_meta
+from caom2utils.caom2blueprint import update_artifact_meta
+from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe import astro_composable as ac
 from caom2pipe.caom_composable import TelescopeMapping
 from caom2pipe import manage_composable as mc
