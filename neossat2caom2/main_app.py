@@ -146,9 +146,7 @@ class NEOSSatMapping(TelescopeMapping):
 
         result = 'calibration'
         mode = self._get_mode(ext)
-        if mode is not None and (
-            'FINE_POINT' in mode or 'FINE_SLEW' in mode or 'FINE_HOLD' in mode
-        ):
+        if mode is not None and ('FINE_POINT' in mode or 'FINE_SLEW' in mode or 'FINE_HOLD' in mode):
             obs_type = self.get_obs_type(ext)
             if obs_type != 'dark':
                 result = 'science'
@@ -330,7 +328,7 @@ class NEOSSatMapping(TelescopeMapping):
         self._logger.debug('Done accumulate_bp.')
 
     def update(self, file_info):
-        """Called to fill multiple CAOM model elements and/or attributes. """
+        """Called to fill multiple CAOM model elements and/or attributes."""
         self._logger.debug('Begin update.')
         for plane in self._observation.planes.values():
             if plane.product_id != self._storage_name.product_id:
@@ -339,7 +337,9 @@ class NEOSSatMapping(TelescopeMapping):
                 if self._storage_name.file_uri == artifact.uri:
                     # TODO why isn't this condition a continue??????
                     update_artifact_meta(artifact, file_info)
-                temp_parts = TypedOrderedDict(Part,)
+                temp_parts = TypedOrderedDict(
+                    Part,
+                )
                 # need to rename the BINARY TABLE extensions, which have
                 # differently telemetry, and remove their chunks
                 for part_key in ['1', '2', '3', '4', '5']:

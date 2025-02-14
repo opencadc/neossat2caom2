@@ -84,9 +84,7 @@ def test_preview_augmentation(test_config, test_data_dir, tmpdir):
     assert test_obs is not None, 'expect an input'
     assert len(test_obs.planes) == 3, 'expect 3 planes'
     for product_id in ['raw', 'cor', 'cord']:
-        assert (
-            len(test_obs.planes[product_id].artifacts) == 1
-        ), 'wrong artifact pre-condition count'
+        assert len(test_obs.planes[product_id].artifacts) == 1, 'wrong artifact pre-condition count'
 
     test_file_names = [
         'NEOS_SCI_2019213215700_cor.fits',
@@ -114,19 +112,15 @@ def test_preview_augmentation(test_config, test_data_dir, tmpdir):
         assert os.path.exists(f'/test_files/{test_storage_name.thumb}')
 
     for product_id in ['raw', 'cor', 'cord']:
-        assert (
-                len(test_obs.planes[product_id].artifacts) == 3
-        ), 'wrong artifact post-condition count'
+        assert len(test_obs.planes[product_id].artifacts) == 3, 'wrong artifact post-condition count'
         if product_id == 'raw':
             preva = 'cadc:NEOSSAT/2019213215700_raw_prev.png'
             thumba = 'cadc:NEOSSAT/2019213215700_raw_prev_256.png'
-            assert (
-                test_obs.planes[product_id].artifacts[preva].content_checksum
-                == ChecksumURI('md5:ccdbb0b7baa9b0320900daea24f0b355')
+            assert test_obs.planes[product_id].artifacts[preva].content_checksum == ChecksumURI(
+                'md5:ccdbb0b7baa9b0320900daea24f0b355'
             ), 'prev checksum failure'
-            assert (
-                test_obs.planes[product_id].artifacts[thumba].content_checksum
-                == ChecksumURI('md5:2187da9e9854ca4b2f767741e28090c9')
+            assert test_obs.planes[product_id].artifacts[thumba].content_checksum == ChecksumURI(
+                'md5:2187da9e9854ca4b2f767741e28090c9'
             ), 'thumb checksum failure'
 
 

@@ -94,4 +94,3 @@ def test_config():
 def test_data_dir():
     this_dir = dirname(realpath(__file__))
     return join(this_dir, 'data')
-

@@ -108,8 +108,7 @@ def test_incremental_source(query_endpoint_mock, test_config, tmpdir):
     assert len(test_result) == 63, 'wrong size results'
     temp = sorted([ii.entry_name for ii in test_result])
     assert (
-        temp[0]
-        == 'https://localhost:8888/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2017/313/'
+        temp[0] == 'https://localhost:8888/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2017/313/'
         'NEOS_SCI_2022001030508.fits'
     ), 'wrong result'
     assert test_subject.end_dt is not None, 'expected date result'
