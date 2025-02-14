@@ -84,8 +84,8 @@ THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 TEST_DATA_DIR = os.path.join(THIS_DIR, 'data')
 START_TIME = datetime.now()
 TEST_START_TIME = START_TIME - timedelta(days=2)
-TEST_DT_1 = (START_TIME - timedelta(days=1))
-TEST_DT_2 = (START_TIME - timedelta(hours=12))
+TEST_DT_1 = START_TIME - timedelta(days=1)
+TEST_DT_2 = START_TIME - timedelta(hours=12)
 
 
 TEST_FILE_LIST = [
@@ -213,9 +213,7 @@ def test_run_by_file(do_one_mock, clients_mock, access_mock):
     clients_mock.return_value.metadata_client.read.side_effect = _mock_repo_read
     clients_mock.return_value.metadata_client.create.side_effect = Mock()
     clients_mock.return_value.metadata_client.update.side_effect = _mock_repo_update
-    clients_mock.return_value.data_client.info.side_effect = (
-        _mock_get_file_info
-    )
+    clients_mock.return_value.data_client.info.side_effect = _mock_get_file_info
     getcwd_orig = os.getcwd
     os.getcwd = Mock(return_value=TEST_DATA_DIR)
     try:

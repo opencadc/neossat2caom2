@@ -103,12 +103,7 @@ class NEOSSatName(StorageName):
 
     @staticmethod
     def extract_obs_id(value):
-        return (
-            value.replace('_clean', '')
-            .replace('NEOS_SCI_', '')
-            .replace('_cord', '')
-            .replace('_cor', '')
-        )
+        return value.replace('_clean', '').replace('NEOS_SCI_', '').replace('_cord', '').replace('_cor', '')
 
     @staticmethod
     def extract_product_id(value):

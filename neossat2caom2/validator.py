@@ -95,6 +95,7 @@ class NeossatValidator(Validator):
         validator_list, fully_qualified_list = list_for_validate(self._config)
         self._fully_qualified_list = fully_qualified_list
         from pandas import DataFrame, Series
+
         return DataFrame(
             {
                 'url': Series(validator_list['url'], dtype='object'),

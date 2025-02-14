@@ -158,9 +158,6 @@ def test_main_app(header_mock, test_name, test_config):
     if compare_result is not None:
         mc.write_obs_to_file(observation, actual_fqn)
         compare_text = '\n'.join([r for r in compare_result])
-        msg = (
-            f'Differences found in observation {expected.observation_id}\n'
-            f'{compare_text}'
-        )
+        msg = f'Differences found in observation {expected.observation_id}\n{compare_text}'
         raise AssertionError(msg)
     # assert False  # cause I want to see logging messages
