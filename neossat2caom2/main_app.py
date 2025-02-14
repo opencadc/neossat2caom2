@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2025.                            (c) 2025.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -74,17 +74,14 @@ from caom2 import CoordFunction2D, Dimension2D, Coord2D, ProductType, Part
 from caom2utils.caom2blueprint import update_artifact_meta
 from caom2utils.wcs_parsers import FitsWcsParser
 from caom2pipe import astro_composable as ac
-from caom2pipe.caom_composable import TelescopeMapping
+from caom2pipe.caom_composable import TelescopeMapping2
 from caom2pipe import manage_composable as mc
 
 
 __all__ = ['NEOSSatMapping']
 
 
-class NEOSSatMapping(TelescopeMapping):
-
-    def __init__(self, storage_name, headers, clients, observable, observation, config):
-        super().__init__(storage_name, headers, clients, observable, observation, config)
+class NEOSSatMapping(TelescopeMapping2):
 
     def get_artifact_product_type(self, ext):
         result = ProductType.SCIENCE
@@ -100,17 +97,17 @@ class NEOSSatMapping(TelescopeMapping):
         return cal_level
 
     def get_coord1_pix(self, ext):
-        ccdsec = self._headers[ext].get('CCDSEC')
+        ccdsec = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('CCDSEC')
         pix = ccdsec.split(',')[0].split(':')[1]
         return pix
 
     def get_coord2_pix(self, ext):
-        ccdsec = self._headers[ext].get('CCDSEC')
+        ccdsec = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('CCDSEC')
         pix = ccdsec.split(',')[1].split(':')[1]
         return pix
 
     def get_dec(self, ext):
-        ra_deg_ignore, dec_deg = self._get_position(ext)
+        _, dec_deg = self._get_position(ext)
         return dec_deg
 
     def get_instrument_keywords(self, ext):
@@ -176,7 +173,7 @@ class NEOSSatMapping(TelescopeMapping):
         if 'DESAT' in mode:
             result = 'dark'
         else:
-            obj = self._headers[ext].get('OBJECT')
+            obj = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('OBJECT')
             if obj is not None and (obj == 'DARK' or obj == 'dark'):
                 result = obj.lower()
             else:
@@ -184,19 +181,19 @@ class NEOSSatMapping(TelescopeMapping):
         return result
 
     def get_plane_data_release(self, ext):
-        result = self._headers[ext].get('RELEASE')
+        result = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('RELEASE')
         if result is None:
-            result = self._headers[ext].get('DATE-OBS')
+            result = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('DATE-OBS')
         return result
 
     def get_position_axis_function_naxis1(self, ext):
-        result = mc.to_int(self._headers[ext].get('NAXIS1'))
+        result = mc.to_int(self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('NAXIS1'))
         if result is not None:
             result = result / 2.0
         return result
 
     def get_position_axis_function_naxis2(self, ext):
-        result = mc.to_int(self._headers[ext].get('NAXIS2'))
+        result = mc.to_int(self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('NAXIS2'))
         if result is not None:
             result = result / 2.0
         return result
@@ -207,26 +204,28 @@ class NEOSSatMapping(TelescopeMapping):
 
     def get_target_moving(self, ext):
         result = True
-        moving = self._headers[ext].get('MOVING')
+        moving = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('MOVING')
         if moving == 'F':
             result = False
         return result
 
     def get_target_type(self, ext):
-        result = self._headers[ext].get('TARGTYPE')
+        result = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('TARGTYPE')
         if result is not None:
             result = result.lower()
         return result
 
     def get_time_delta(self, ext):
         result = None
-        exptime = mc.to_float(self._headers[ext].get('EXPOSURE'))  # in s
+        exptime = mc.to_float(
+            self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('EXPOSURE')
+        )  # in s
         if exptime is not None:
             result = exptime / (24.0 * 3600.0)
         return result
 
     def get_time_function_val(self, ext):
-        time_string = self._headers[ext].get('DATE-OBS')
+        time_string = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('DATE-OBS')
         return ac.get_datetime_mjd(time_string)
 
     def _get_energy(self, ext):
@@ -235,7 +234,7 @@ class NEOSSatMapping(TelescopeMapping):
         min_wl = 0.4
         max_wl = 0.9
         # header units are Angstroms
-        bandpass = self._headers[ext].get('BANDPASS')
+        bandpass = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('BANDPASS')
         if bandpass is not None:
             temp = bandpass.split(',')
             min_wl = mc.to_float(temp[0]) / 1e4
@@ -243,19 +242,19 @@ class NEOSSatMapping(TelescopeMapping):
         return min_wl, max_wl
 
     def _get_mode(self, ext):
-        return self._headers[ext].get('MODE')
+        return self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('MODE')
 
     def _get_position(self, ext):
-        ra = self._headers[ext].get('RA')
-        dec = self._headers[ext].get('DEC')
+        ra = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('RA')
+        dec = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('DEC')
         if ra is None and dec is None:
             # DB 25-09-19
             # Looking at other sample headers for a bunch of files OBJCTRA and
             # OBJCTDEC are always the same as RA and DEC so use those if RA and/or
             # DEC are missing  Note OBJCRA/OBJCTDEC do not have ‘:’ delimiters
             # between hours(degrees)/minutes/seconds.
-            ra_temp = self._headers[ext].get('OBJCTRA')
-            dec_temp = self._headers[ext].get('OBJCTDEC')
+            ra_temp = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('OBJCTRA')
+            dec_temp = self._storage_name.metadata.get(self._storage_name.file_uri)[ext].get('OBJCTDEC')
             ra = ra_temp.replace(' ', ':')
             dec = dec_temp.replace(' ', ':')
         ra = None if ra == 'TBD' else ra
@@ -327,7 +326,7 @@ class NEOSSatMapping(TelescopeMapping):
 
         self._logger.debug('Done accumulate_bp.')
 
-    def update(self, file_info):
+    def update(self):
         """Called to fill multiple CAOM model elements and/or attributes."""
         self._logger.debug('Begin update.')
         for plane in self._observation.planes.values():
@@ -336,7 +335,7 @@ class NEOSSatMapping(TelescopeMapping):
             for artifact in plane.artifacts.values():
                 if self._storage_name.file_uri == artifact.uri:
                     # TODO why isn't this condition a continue??????
-                    update_artifact_meta(artifact, file_info)
+                    update_artifact_meta(artifact, self._storage_name.file_info.get(self._storage_name.file_uri))
                 temp_parts = TypedOrderedDict(
                     Part,
                 )
@@ -347,7 +346,9 @@ class NEOSSatMapping(TelescopeMapping):
                         hdu_count = mc.to_int(part_key)
                         temp = artifact.parts.pop(part_key)
                         temp.product_type = ProductType.AUXILIARY
-                        temp.name = self._headers[hdu_count].get('EXTNAME')
+                        temp.name = self._storage_name.metadata.get(self._storage_name.file_uri)[hdu_count].get(
+                            'EXTNAME'
+                        )
                         while len(temp.chunks) > 0:
                             temp.chunks.pop()
                         temp_parts.add(temp)
@@ -382,12 +383,12 @@ class NEOSSatMapping(TelescopeMapping):
 
             # DB 24-09-19
             # If FILTER not in header, set filter_name = ‘CLEAR’
-            filter_name = self._headers[0].get('FILTER', 'CLEAR')
+            filter_name = self._storage_name.metadata.get(self._storage_name.file_uri)[0].get('FILTER', 'CLEAR')
 
             # DB 24-09-19
             # if wavelength IS None, wl = 0.6 microns, and resolving_power is
             # always determined.
-            wavelength = self._headers[0].get('WAVELENG', 6000)
+            wavelength = self._storage_name.metadata.get(self._storage_name.file_uri)[0].get('WAVELENG', 6000)
             wl = wavelength / 1e4  # everything in microns
             resolving_power = wl / (max_wl - min_wl)
             energy = SpectralWCS(
@@ -409,7 +410,7 @@ class NEOSSatMapping(TelescopeMapping):
         # give binning values along RA/DEC axes.   CDELT1 (scale in
         # degrees/pixel; it’s 3 arcsec/unbinned pixel)= 3.0*XBINNING/3600.0
         # CDELT2 = 3.0*YBINNING/3600.0.  Set CROTA2=0.0
-        header = self._headers[0]
+        header = self._storage_name.metadata.get(self._storage_name.file_uri)[0]
         ra = self.get_ra(0)
         dec = self.get_dec(0)
         if ra is None or dec is None:

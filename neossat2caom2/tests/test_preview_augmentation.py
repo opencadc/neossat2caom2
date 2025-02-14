@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2021.                            (c) 2021.
+#  (c) 2025.                            (c) 2025.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -71,7 +71,6 @@ import shutil
 
 from caom2 import ChecksumURI
 from caom2pipe import manage_composable as mc
-from caom2pipe import name_builder_composable as nbc
 
 from neossat2caom2 import preview_augmentation, NEOSSatName
 
@@ -92,12 +91,11 @@ def test_preview_augmentation(test_config, test_data_dir, tmpdir):
         'NEOS_SCI_2019213215700_cord.fits',
     ]
 
-    test_builder = nbc.GuessingBuilder(NEOSSatName)
     for f_name in test_file_names:
         test_fqn = f'/test_files/{f_name}'
         if not os.path.exists(test_fqn):
             shutil.copy(f'{test_data_dir}/{f_name}', test_fqn)
-        test_storage_name = test_builder.build(test_fqn)
+        test_storage_name = NEOSSatName([test_fqn])
         if os.path.exists(f'/test_files/{test_storage_name.prev}'):
             os.unlink(f'/test_files/{test_storage_name.prev}')
         if os.path.exists(f'/test_files/{test_storage_name.thumb}'):
@@ -117,17 +115,16 @@ def test_preview_augmentation(test_config, test_data_dir, tmpdir):
             preva = 'cadc:NEOSSAT/2019213215700_raw_prev.png'
             thumba = 'cadc:NEOSSAT/2019213215700_raw_prev_256.png'
             assert test_obs.planes[product_id].artifacts[preva].content_checksum == ChecksumURI(
-                'md5:ccdbb0b7baa9b0320900daea24f0b355'
+                'md5:1799bff1b95a38e78020b931085808b2'
             ), 'prev checksum failure'
             assert test_obs.planes[product_id].artifacts[thumba].content_checksum == ChecksumURI(
-                'md5:2187da9e9854ca4b2f767741e28090c9'
+                'md5:ad864ba87cf45cacdca1c66509aa8d92'
             ), 'thumb checksum failure'
 
 
 def test_half_black(test_config, test_data_dir, tmpdir):
     test_config.data_sources = ['/test_files']
     test_config.change_working_directory(tmpdir)
-    test_builder = nbc.GuessingBuilder(NEOSSatName)
     test_file_names = ['NEOS_SCI_2023105181520.fits']
 
     for f_name in test_file_names:
@@ -136,7 +133,7 @@ def test_half_black(test_config, test_data_dir, tmpdir):
         )
         test_fqn = f'/test_files/{f_name}'
         assert os.path.exists(test_fqn), f'missing {test_fqn}'
-        test_storage_name = test_builder.build(test_fqn)
+        test_storage_name = NEOSSatName([test_fqn])
         if os.path.exists(f'/test_files/{test_storage_name.prev}'):
             os.unlink(f'/test_files/{test_storage_name.prev}')
         if os.path.exists(f'/test_files/{test_storage_name.thumb}'):
