@@ -93,8 +93,7 @@ def _run():
     """
     Uses a todo file to identify the work to be done.
 
-    :return 0 if successful, -1 if there's any sort of failure. Return status
-        is used by airflow for task instance management and reporting.
+    :return 0 if successful, -1 if there's any sort of failure.
     """
     config = Config()
     config.get_executors()

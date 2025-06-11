@@ -71,8 +71,6 @@ from neossat2caom2.main_app import NEOSSatMapping
 
 
 class NEOSSatFits2caom2Visitor(Fits2caom2VisitorRunnerMeta):
-    def __init__(self, observation, **kwargs):
-        super().__init__(observation, **kwargs)
 
     def _get_mappings(self, _):
         return [NEOSSatMapping(self._storage_name, self._clients, self._reporter, self._observation, self._config)]

@@ -115,9 +115,6 @@ def test_run_state(run_mock, access_mock, data_source_mock, test_config, tmp_pat
 
     class MockDS(HttpDataSourceRunnerMeta):
 
-        def __init__(self, config, start_key, html_filters, session, storage_name_ctor):
-            super().__init__(config, start_key, html_filters, session, storage_name_ctor)
-
         def _descend_html_hierarchy(self, _):
             self._todo_list = x
 

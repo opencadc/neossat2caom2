@@ -66,17 +66,17 @@
 # ***********************************************************************
 #
 
-from mock import patch
-
 from neossat2caom2 import NEOSSatName, fits2caom2_augmentation
 
+from cadcdata import FileInfo
 from caom2.diff import get_differences
-from caom2utils.data_util import get_local_file_headers, get_local_file_info
 from caom2pipe import astro_composable as ac
 from caom2pipe import manage_composable as mc
 
 import glob
 import os
+
+from neossat2caom2.tests.test_data_source import TEST_DATA_DIR
 
 LOOKUP = {
     '2019213173800': [
@@ -116,32 +116,29 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize('test_name', LOOKUP.keys())
 
 
-@patch('caom2utils.data_util.get_local_headers_from_fits')
-def test_main_app(header_mock, test_name, test_data_dir, test_config, tmp_path, change_test_dir):
+def test_main_app(test_name, test_config, tmp_path):
     test_config.change_working_directory(tmp_path.as_posix())
-    expected_fqn = f'{test_data_dir}/{test_name}.expected.xml'
+    expected_fqn = f'{TEST_DATA_DIR}/{test_name}.expected.xml'
     actual_fqn = expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
         os.unlink(actual_fqn)
 
-    header_mock.side_effect = ac.make_headers_from_file
-    header_files = glob.glob(f'{test_data_dir}/*{test_name}*.header')
-    test_reporter = mc.ExecutionReporter2(test_config)
+    header_files = glob.glob(f'{TEST_DATA_DIR}/*{test_name}*.header')
     observation = None
-    in_fqn = expected_fqn.replace('.expected', '.in')
-    if os.path.exists(in_fqn):
-        observation = mc.read_obs_from_file(in_fqn)
     for header_file in header_files:
         storage_name = NEOSSatName(source_names=[header_file])
-        storage_name.metadata[storage_name.file_uri.replace('.header', '')] = get_local_file_headers(header_file)
-        storage_name.file_info[storage_name.file_uri.replace('.header', '')] = get_local_file_info(header_file)
-        file_type = 'application/fits'
-        storage_name.file_info[storage_name.file_uri.replace('.header', '')].file_type = file_type
+        file_info = FileInfo(id=storage_name.file_uri, file_type='application/fits')
+        headers = ac.make_headers_from_file(header_file)
+        storage_name.file_info = {storage_name.file_uri: file_info}
+        storage_name.metadata = {storage_name.file_uri: headers}
         kwargs = {
             'storage_name': storage_name,
+            'reporter': mc.ExecutionReporter2(test_config),
             'config': test_config,
-            'reporter': test_reporter,
         }
+        in_fqn = expected_fqn.replace('.expected', '.in')
+        if os.path.exists(in_fqn):
+            observation = mc.read_obs_from_file(in_fqn)
         observation = fits2caom2_augmentation.visit(observation, **kwargs)
 
     try:
