@@ -45,7 +45,6 @@
           <caom2:productType>calibration</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
-          <caom2:contentLength>2430720</caom2:contentLength>
           <caom2:contentChecksum>md5:51cc9935f62260371b2691f4ab961461</caom2:contentChecksum>
           <caom2:parts>
             <caom2:part caom2:id="63e65b58-6bc2-421e-8a8f-39857f1ade0c" caom2:lastModified="2021-08-09T21:44:30.656" caom2:maxLastModified="2021-08-09T21:44:30.656" caom2:metaChecksum="md5:08a26d4faa0da65301862f4419923357" caom2:accMetaChecksum="md5:9653532cc31257d49458f267cafffc16">
@@ -167,7 +166,6 @@
           <caom2:productType>preview</caom2:productType>
           <caom2:releaseType>meta</caom2:releaseType>
           <caom2:contentType>image/png</caom2:contentType>
-          <caom2:contentLength>1654744</caom2:contentLength>
           <caom2:contentChecksum>md5:b1cf3c31c2da621bb43e3049b8be66b1</caom2:contentChecksum>
           <caom2:parts/>
         </caom2:artifact>
@@ -176,7 +174,6 @@
           <caom2:productType>thumbnail</caom2:productType>
           <caom2:releaseType>meta</caom2:releaseType>
           <caom2:contentType>image/png</caom2:contentType>
-          <caom2:contentLength>75333</caom2:contentLength>
           <caom2:contentChecksum>md5:c1f8d2cd55c57840a5c45f6ecd7f85ac</caom2:contentChecksum>
           <caom2:parts/>
         </caom2:artifact>
@@ -185,7 +182,6 @@
           <caom2:productType>calibration</caom2:productType>
           <caom2:releaseType>data</caom2:releaseType>
           <caom2:contentType>application/fits</caom2:contentType>
-          <caom2:contentLength>2430720</caom2:contentLength>
           <caom2:contentChecksum>md5:51cc9935f62260371b2691f4ab961461</caom2:contentChecksum>
           <caom2:parts>
             <caom2:part caom2:id="605ab1b6-129a-43ee-bf5e-b7bbba41fd0b" caom2:lastModified="2021-08-02T03:24:08.355" caom2:maxLastModified="2021-08-02T03:24:08.355" caom2:metaChecksum="md5:5ee7f8be01204f7fd07edd0e35c018c3" caom2:accMetaChecksum="md5:84b6e863eb6ed1e5d700b1ee8eaf50e7">
@@ -322,7 +318,6 @@
           <caom2:productType>preview</caom2:productType>
           <caom2:releaseType>meta</caom2:releaseType>
           <caom2:contentType>image/png</caom2:contentType>
-          <caom2:contentLength>1654272</caom2:contentLength>
           <caom2:contentChecksum>md5:3fbc48d63f9cbdcaeadf1e66afda5adc</caom2:contentChecksum>
           <caom2:parts/>
         </caom2:artifact>
@@ -331,8 +326,6 @@
           <caom2:productType>thumbnail</caom2:productType>
           <caom2:releaseType>meta</caom2:releaseType>
           <caom2:contentType>image/png</caom2:contentType>
-          <caom2:contentLength>75054</caom2:contentLength>
-          <caom2:contentChecksum>md5:5fa7f79bf36551f2dd0075e1a176c88c</caom2:contentChecksum>
           <caom2:parts/>
         </caom2:artifact>
         <caom2:artifact caom2:id="11429c50-2732-43cb-93e8-021224ed2740" caom2:lastModified="2021-08-09T09:01:28.057" caom2:maxLastModified="2021-08-09T09:01:28.057" caom2:metaChecksum="md5:0a7b47c9a4980057316e914156a17f02" caom2:accMetaChecksum="md5:64d7f672dca5a48bc1a25daab3b0e19e">

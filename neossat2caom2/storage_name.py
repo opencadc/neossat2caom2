@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2022.                            (c) 2022.
+#  (c) 2025.                            (c) 2025.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -76,8 +75,8 @@ class NEOSSatName(StorageName):
     - support uncompressed files in storage
     """
 
-    def __init__(self, file_name, source_names):
-        super().__init__(file_name=file_name, source_names=source_names)
+    def __init__(self, source_names):
+        super().__init__(source_names=source_names)
 
     def is_valid(self):
         return True

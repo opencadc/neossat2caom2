@@ -2,7 +2,7 @@
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2019.                            (c) 2019.
+#  (c) 2025.                            (c) 2025.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -77,9 +77,8 @@ import logging
 import sys
 import traceback
 
-from caom2pipe.html_data_source import HttpDataSource
+from caom2pipe.html_data_source import HttpDataSourceRunnerMeta
 from caom2pipe.manage_composable import Config, get_endpoint_session
-from caom2pipe import name_builder_composable as nbc
 from caom2pipe import run_composable as rc
 from caom2pipe.transfer_composable import HttpTransfer
 from neossat2caom2 import fits2caom2_augmentation, preview_augmentation
@@ -94,19 +93,17 @@ def _run():
     """
     Uses a todo file to identify the work to be done.
 
-    :return 0 if successful, -1 if there's any sort of failure. Return status
-        is used by airflow for task instance management and reporting.
+    :return 0 if successful, -1 if there's any sort of failure.
     """
-    builder = nbc.GuessingBuilder(NEOSSatName)
     config = Config()
     config.get_executors()
     transferrer = HttpTransfer()
-    return rc.run_by_todo(
-        name_builder=builder,
+    return rc.run_by_todo_runner_meta(
         config=config,
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
         store_transfer=transferrer,
+        storage_name_ctor=NEOSSatName,
     )
 
 
@@ -127,23 +124,22 @@ def _run_state():
 
     Ingestion is based on fully-qualified file names from the CSA https host.
     """
-    builder = nbc.GuessingBuilder(NEOSSatName)
     config = Config()
     config.get_executors()
     pages_template = NeossatPagesTemplate(config)
     session = get_endpoint_session()
     data_sources = []
     for start_key in config.data_sources:
-        incremental_source = HttpDataSource(config, start_key, pages_template, session)
+        incremental_source = HttpDataSourceRunnerMeta(config, start_key, pages_template, session, NEOSSatName)
         data_sources.append(incremental_source)
     transferrer = HttpTransfer()
-    return rc.run_by_state(
+    return rc.run_by_state_runner_meta(
         config=config,
-        name_builder=builder,
         meta_visitors=META_VISITORS,
         data_visitors=DATA_VISITORS,
         sources=data_sources,
         store_transfer=transferrer,
+        storage_name_ctor=NEOSSatName,
     )
 
 

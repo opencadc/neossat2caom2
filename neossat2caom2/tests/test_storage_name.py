@@ -1,9 +1,8 @@
-# -*- coding: utf-8 -*-
 # ***********************************************************************
 # ******************  CANADIAN ASTRONOMY DATA CENTRE  *******************
 # *************  CENTRE CANADIEN DE DONNÉES ASTRONOMIQUES  **************
 #
-#  (c) 2018.                            (c) 2018.
+#  (c) 2025.                            (c) 2025.
 #  Government of Canada                 Gouvernement du Canada
 #  National Research Council            Conseil national de recherches
 #  Ottawa, Canada, K1A 0R6              Ottawa, Canada, K1A 0R6
@@ -67,22 +66,20 @@
 # ***********************************************************************
 #
 
-from caom2pipe import name_builder_composable as nbc
 from neossat2caom2 import NEOSSatName
 
 
 def test_is_valid():
-    assert NEOSSatName('anything', 'anything').is_valid()
+    assert NEOSSatName(['anything']).is_valid()
 
 
 def test_storage_name(test_config):
-    test_builder = nbc.GuessingBuilder(NEOSSatName)
     for f_name in [
         'NEOS_SCI_2019213173800_cord.fits',
         'NEOS_SCI_2019213173800_cor.fits.gz',
         'NEOS_SCI_2019213173800.fits',
     ]:
-        test_sub = test_builder.build(f_name)
+        test_sub = NEOSSatName([f_name])
         assert test_sub.obs_id == '2019213173800'
 
         if f_name == 'NEOS_SCI_2019213173800_cord.fits':
@@ -93,8 +90,7 @@ def test_storage_name(test_config):
 def test_storage_name_fqn(test_config):
     f_name = 'NEOS_SCI_2019268004930_clean.fits'
     test_fqn = f'/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/' f'268/{f_name}'
-    test_builder = nbc.GuessingBuilder(NEOSSatName)
-    test_subject = test_builder.build(test_fqn)
+    test_subject = NEOSSatName([test_fqn])
     assert test_subject.file_name == f_name, 'wrong file name'
     assert test_subject.source_names == [f'{test_fqn}'], 'wrong source names'
     assert test_subject.destination_uris == [f'cadc:NEOSSAT/{f_name}'], 'wrong destination uris'
