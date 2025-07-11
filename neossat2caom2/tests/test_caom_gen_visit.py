@@ -76,7 +76,6 @@ from caom2pipe import manage_composable as mc
 import glob
 import os
 
-from neossat2caom2.tests.test_data_source import TEST_DATA_DIR
 
 LOOKUP = {
     '2019213173800': [
@@ -98,8 +97,8 @@ LOOKUP = {
         'NEOS_SCI_2019213174531_cord',
     ],
     '2019213215700': [
-        'NEOS_SCI_2019213215700',
         'NEOS_SCI_2019213215700_cor',
+        'NEOS_SCI_2019213215700',
         'NEOS_SCI_2019213215700_cord',
     ],
     # dark
@@ -116,14 +115,14 @@ def pytest_generate_tests(metafunc):
     metafunc.parametrize('test_name', LOOKUP.keys())
 
 
-def test_main_app(test_name, test_config, tmp_path):
+def test_main_app(test_name, test_config, test_data_dir, tmp_path, change_test_dir):
     test_config.change_working_directory(tmp_path.as_posix())
-    expected_fqn = f'{TEST_DATA_DIR}/{test_name}.expected.xml'
+    expected_fqn = f'{test_data_dir}/{test_name}.expected.xml'
     actual_fqn = expected_fqn.replace('expected', 'actual')
     if os.path.exists(actual_fqn):
         os.unlink(actual_fqn)
 
-    header_files = glob.glob(f'{TEST_DATA_DIR}/*{test_name}*.header')
+    header_files = glob.glob(f'{test_data_dir}/*{test_name}*.header')
     observation = None
     for header_file in header_files:
         storage_name = NEOSSatName(source_names=[header_file])
