@@ -66,7 +66,9 @@
 # ***********************************************************************
 #
 
+from caom2pipe.execute_composable import NoFheadStoreVisitRunnerMeta, OrganizeExecutesRunnerMeta
 from caom2pipe.html_data_source import HtmlFilter, HtmlFilteredPagesTemplate
+from caom2pipe.manage_composable import TaskType
 
 
 __all__ = ['NeossatPagesTemplate']
@@ -109,3 +111,57 @@ class NeossatPagesTemplate(HtmlFilteredPagesTemplate):
 
     def first_filter(self):
         return self._year_filter
+
+
+class NEOSSATNoFheadStoreVisitRunnerMeta(NoFheadStoreVisitRunnerMeta):
+    """
+    This is a temporary class to support refactoring, and when all dependent applications have also been refactored
+    to provide the expected StorageName API, this class will be integrated back into the CaomExecute class.
+    """
+
+    def _set_preconditions(self):
+        if self._config.use_local_files:
+            super()._set_preconditions()
+        else:
+            self._logger.debug('Rely on the _store_data over-ride to set the preconditions')
+
+    def _store_data(self):
+        super()._store_data()
+        # use the data staged locally to get the file info and header content, which is the default _set_preconditions
+        # implementation
+        super()._set_preconditions()
+
+
+class NEOSSatOrganizeExecutesRunnerMeta(OrganizeExecutesRunnerMeta):
+    """A class that extends OrganizeExecutes to handle the choosing of the correct executors based on the config.yml.
+    Attributes:
+        _needs_delete (bool): if True, the CAOM repo action is delete/create instead of update.
+        _reporter: An instance responsible for reporting the execution status.
+    Methods:
+        _choose():
+            Determines which descendants of CaomExecute to instantiate based on the content of the config.yml
+            file for an application.
+
+    This is a temporary class to support refactoring, and when all dependent applications have also been refactored
+    to provide the expected StorageName API, this class will be integrated back into the CaomExecute class.
+
+    """
+
+    def _choose(self):
+        """The logic that decides which descendants of CaomExecute to instantiate. This is based on the content of
+        the config.yml file for an application.
+        """
+        super()._choose()
+        if self.can_use_single_visit() and TaskType.STORE in self.task_types and not self.config.use_local_files:
+            self._logger.debug(f'Choosing executor NEOSSatOrganizeExecutesRunnerMeta to over-ride default choice.')
+            self._executors = []  # over-ride the default choice.
+            self._executors.append(
+                NEOSSATNoFheadStoreVisitRunnerMeta(
+                    self.config,
+                    self._clients,
+                    self._store_transfer,
+                    self._meta_visitors,
+                    self._data_visitors,
+                    self._reporter,
+                )
+            )

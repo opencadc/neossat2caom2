@@ -70,8 +70,9 @@ import os
 import re
 
 from datetime import datetime, timedelta
-from mock import patch, Mock
+from mock import ANY, patch, Mock
 
+from cadcdata import FileInfo
 from caom2 import SimpleObservation
 from caom2pipe.html_data_source import HttpDataSourceRunnerMeta
 from caom2pipe.astro_composable import make_headers_from_file
@@ -221,6 +222,62 @@ def test_run_by_file(do_one_mock, clients_mock, test_data_dir, test_config, tmp_
     assert do_one_mock.call_count == 10, 'wrong number of mock calls'
 
 
+@patch('caom2pipe.execute_composable.get_local_file_headers')
+@patch('caom2pipe.execute_composable.get_local_file_info')
+@patch('neossat2caom2.fits2caom2_augmentation.visit')
+@patch('caom2pipe.astro_composable.check_fitsverify')
+@patch('caom2pipe.manage_composable.http_get')
+@patch('caom2pipe.client_composable.ClientCollection')
+def test_run_by_file_store_ingest_modify(
+    clients_mock, 
+    http_get_mock, 
+    fits_verify_mock, 
+    visit_mock, 
+    file_info_mock, 
+    file_header_mock, 
+    test_data_dir, 
+    test_config, 
+    tmp_path, 
+    change_test_dir,
+):
+    test_file_uri = 'cadc:NEOSSAT/NEOS_SCI_2019268004930_clean.fits'
+    file_header_mock.return_value = []
+    file_info_mock.return_value = FileInfo(
+        id=test_file_uri,
+        file_type='application/fits', 
+    )
+    visit_mock.side_effect = _mock_visit_wd
+    fits_verify_mock.return_value = True
+    http_get_mock.side_effect = _mock_http_get
+
+    test_config.change_working_directory(tmp_path.as_posix())
+    test_config.task_types = [mc.TaskType.STORE, mc.TaskType.INGEST, mc.TaskType.MODIFY]
+    test_config.use_local_files = False
+    test_config.logging_level = 'INFO'
+    test_config.write_to_file(test_config)
+    # do_one_mock.return_value = (0, None)
+    with open(test_config.work_fqn, 'w') as f_out:
+        f_out.write(
+            'https://data.asc-csa.gc.ca/users/OpenData_DonneesOuvertes/pub/NEOSSAT/ASTRO/2019/268/NEOS_SCI_2019268004930_clean.fits\n'
+        )
+    clients_mock.return_value.metadata_client.read.side_effect = _mock_repo_read
+    clients_mock.return_value.metadata_client.create.side_effect = Mock()
+    clients_mock.return_value.metadata_client.update.side_effect = _mock_repo_update
+    clients_mock.return_value.data_client.info.side_effect = _mock_get_file_info
+    test_result = composable._run()
+    assert test_result == 0, 'wrong result'
+    # assert do_one_mock.called, 'expect do_one call'
+    # assert do_one_mock.call_count == 1, 'wrong number of mock calls'
+    assert clients_mock.return_value.data_client.put.called, 'put call'
+    clients_mock.return_value.data_client.put.assert_called_with(
+        f'{tmp_path}/2019268004930', test_file_uri
+    ), 'put call args'
+    assert clients_mock.return_value.metadata_client.read.called, 'read call'
+    clients_mock.return_value.metadata_client.read.assert_called_with('NEOSSAT', '2019268004930'), 'read call'
+    assert clients_mock.return_value.metadata_client.update.called, 'modify call'
+    clients_mock.return_value.metadata_client.update.assert_called_with(ANY), 'modify call'
+
+
 @patch('caom2pipe.execute_composable.get_local_file_info')
 @patch('caom2pipe.execute_composable.get_local_file_headers')
 def test_store(headers_mock, file_info_mock, test_data_dir, test_config, tmp_path, change_test_dir):
@@ -272,6 +329,10 @@ def _mock_repo_read(collection, obs_id):
     return SimpleObservation(collection=collection, observation_id=obs_id)
 
 
+def _mock_visit_wd(obs, **kwargs):
+    return _mock_repo_read('NEOSSat', 'test_obs')
+
+
 def _mock_repo_update(ignore1):
     return None
 
@@ -281,3 +342,7 @@ def _mock_get_file_info(uri):
         return {'type': 'image/jpeg'}
     else:
         return {'type': 'application/fits'}
+
+
+def _mock_http_get(url, local_fqn):
+    pass
