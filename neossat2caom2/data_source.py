@@ -66,7 +66,12 @@
 # ***********************************************************************
 #
 
+from os.path import basename
+
+from caom2utils.data_util import get_local_file_info, get_local_file_headers
+from caom2pipe.execute_composable import NoFheadStoreVisitRunnerMeta, OrganizeExecutesRunnerMeta
 from caom2pipe.html_data_source import HtmlFilter, HtmlFilteredPagesTemplate
+from caom2pipe.manage_composable import TaskType
 
 
 __all__ = ['NeossatPagesTemplate']
@@ -109,3 +114,72 @@ class NeossatPagesTemplate(HtmlFilteredPagesTemplate):
 
     def first_filter(self):
         return self._year_filter
+
+
+class NEOSSATNoFheadStoreVisitRunnerMeta(NoFheadStoreVisitRunnerMeta):
+    """
+    This is a temporary class to support refactoring, and when all dependent applications have also been refactored
+    to provide the expected StorageName API, this class will be integrated back into the CaomExecute class.
+    """
+
+    def _set_preconditions(self):
+        """The default preconditions are ensuring that the StorageName instance from the 'context' parameter has
+        both the metadata and file_info members initialized correctly. For the default case assume the files are
+        found on local posix disk, and the preconditions are satisfied by local file access functions to the
+        source_names values in StorageName."""
+        if self._config.use_local_files:
+            super()._set_preconditions()
+        else:
+            self._logger.debug('Do _set_preconditions after the store, at the interim storage location.')
+
+    def _store_data(self):
+        super()._store_data()
+        # use the data staged locally to get the file info and header content, which is the default _set_preconditions
+        # implementation
+        self._logger.debug(f'Begin _set_preconditions for {self._storage_name.file_name}')
+        for index, source_name in enumerate(self._storage_name.source_names):
+            uri = self._storage_name.destination_uris[index]
+            interim_name = f'{self._config.working_directory}/{self._storage_name.obs_id}/{basename(source_name)}'
+            self._logger.error(interim_name)
+            if uri not in self._storage_name.file_info:
+                self._storage_name.file_info[uri] = get_local_file_info(interim_name)
+            if uri not in self._storage_name.metadata:
+                self._storage_name.metadata[uri] = []
+            if '.fits' in source_name:
+                self._storage_name._metadata[uri] = get_local_file_headers(interim_name)
+        self._logger.debug('End _set_preconditions')
+
+
+class NEOSSatOrganizeExecutesRunnerMeta(OrganizeExecutesRunnerMeta):
+    """A class that extends OrganizeExecutes to handle the choosing of the correct executors based on the config.yml.
+    Attributes:
+        _needs_delete (bool): if True, the CAOM repo action is delete/create instead of update.
+        _reporter: An instance responsible for reporting the execution status.
+    Methods:
+        _choose():
+            Determines which descendants of CaomExecute to instantiate based on the content of the config.yml
+            file for an application.
+
+    This is a temporary class to support refactoring, and when all dependent applications have also been refactored
+    to provide the expected StorageName API, this class will be integrated back into the CaomExecute class.
+
+    """
+
+    def _choose(self):
+        """The logic that decides which descendants of CaomExecute to instantiate. This is based on the content of
+        the config.yml file for an application.
+        """
+        super()._choose()
+        if self.can_use_single_visit() and TaskType.STORE in self.task_types and not self.config.use_local_files:
+            self._logger.debug(f'Choosing executor NEOSSatOrganizeExecutesRunnerMeta to over-ride default choice.')
+            self._executors = []  # over-ride the default choice.
+            self._executors.append(
+                NEOSSATNoFheadStoreVisitRunnerMeta(
+                    self.config,
+                    self._clients,
+                    self._store_transfer,
+                    self._meta_visitors,
+                    self._data_visitors,
+                    self._reporter,
+                )
+            )

@@ -104,6 +104,8 @@ def _run():
         data_visitors=DATA_VISITORS,
         store_transfer=transferrer,
         storage_name_ctor=NEOSSatName,
+        organizer_module_name='neossat2caom2.data_source',
+        organizer_class_name='NEOSSatOrganizeExecutesRunnerMeta',
     )
 
 
@@ -140,6 +142,8 @@ def _run_state():
         sources=data_sources,
         store_transfer=transferrer,
         storage_name_ctor=NEOSSatName,
+        organizer_module_name='neossat2caom2.data_source',
+        organizer_class_name='NEOSSatOrganizeExecutesRunnerMeta',
     )
 
 
