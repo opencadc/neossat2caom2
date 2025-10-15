@@ -66,6 +66,9 @@
 # ***********************************************************************
 #
 
+from os.path import basename
+
+from caom2utils.data_util import get_local_file_info, get_local_file_headers
 from caom2pipe.execute_composable import NoFheadStoreVisitRunnerMeta, OrganizeExecutesRunnerMeta
 from caom2pipe.html_data_source import HtmlFilter, HtmlFilteredPagesTemplate
 from caom2pipe.manage_composable import TaskType
@@ -120,16 +123,31 @@ class NEOSSATNoFheadStoreVisitRunnerMeta(NoFheadStoreVisitRunnerMeta):
     """
 
     def _set_preconditions(self):
+        """The default preconditions are ensuring that the StorageName instance from the 'context' parameter has
+        both the metadata and file_info members initialized correctly. For the default case assume the files are
+        found on local posix disk, and the preconditions are satisfied by local file access functions to the
+        source_names values in StorageName."""
         if self._config.use_local_files:
             super()._set_preconditions()
         else:
-            self._logger.debug('Rely on the _store_data over-ride to set the preconditions')
+            self._logger.debug('Do _set_preconditions after the store, at the interim storage location.')
 
     def _store_data(self):
         super()._store_data()
         # use the data staged locally to get the file info and header content, which is the default _set_preconditions
         # implementation
-        super()._set_preconditions()
+        self._logger.debug(f'Begin _set_preconditions for {self._storage_name.file_name}')
+        for index, source_name in enumerate(self._storage_name.source_names):
+            uri = self._storage_name.destination_uris[index]
+            interim_name = f'{self._config.working_directory}/{self._storage_name.obs_id}/{basename(source_name)}'
+            self._logger.error(interim_name)
+            if uri not in self._storage_name.file_info:
+                self._storage_name.file_info[uri] = get_local_file_info(interim_name)
+            if uri not in self._storage_name.metadata:
+                self._storage_name.metadata[uri] = []
+            if '.fits' in source_name:
+                self._storage_name._metadata[uri] = get_local_file_headers(interim_name)
+        self._logger.debug('End _set_preconditions')
 
 
 class NEOSSatOrganizeExecutesRunnerMeta(OrganizeExecutesRunnerMeta):
