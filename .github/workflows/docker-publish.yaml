@@ -1,0 +1,66 @@
+name: Build and Publish NEOSSat2CAOM2 Docker Image
+
+on:
+  release:
+    types: [published]  # triggers when a release is published manually or via API
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker image
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Docker Hub login (or comment out if using GHCR)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image for scannig
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: |
+            opencadc/neossat2caom2:latest
+            opencadc/neossat2caom2:${{ github.event.release.tag_name }}
+          load: true  # Load the image into the local Docker cache
+
+      # Run Trivy vulnerability scan
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.22.0
+        with:
+          image-ref: opencadc/neossat2caom2:latest
+          format: 'table'
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: 1  # Fail if vulnerabilities found
+
+      - name: Build and Publish Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            opencadc/neossat2caom2:latest
+            opencadc/neossat2caom2:${{ github.event.release.tag_name }}
+
+      - name: Inspect image
+        run: docker image inspect opencadc/neossat2caom2:${{ github.event.release.tag_name }}
+

@@ -94,3 +94,7 @@ In an empty directory (the 'working directory'), on a machine with Docker instal
     ```
     ./neossat_run_state.sh
     ```
+
+# Release Notes
+
+Creating a new GitHub Release will trigger a GitHub Action to build and publish a new Docker image to Docker Hub. The image will be tagged with the GitHub Release version number.
